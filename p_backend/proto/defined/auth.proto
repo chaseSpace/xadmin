@@ -1,0 +1,144 @@
+syntax = "proto3";
+package xadmin;
+option go_package = "monorepo/proto/xadminpb;xadmin";
+
+import "validator.proto";
+
+message AuthLoginReq {
+  string username = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string password = 2 [(validate.rules).string = {min_len: 1, max_len: 128}];
+}
+
+message AuthLoginResp {
+  string access_token = 1;
+  string expires_at = 2;
+  int32 uid = 3;
+  string username = 4;
+  string display_name = 5;
+  string avatar = 6;
+  string session_id = 7;
+}
+
+message AuthLogoutReq {}
+message AuthLogoutOthersReq {}
+
+message AuthActionResp {
+  bool success = 1;
+  string action = 2;
+}
+
+message AuthForceLogoutReq {
+  int32 target_uid = 1 [(validate.rules).int32 = {gt: 0}];
+}
+
+message AuthDeactivateReq {
+  int32 target_uid = 1 [(validate.rules).int32 = {gt: 0}];
+}
+
+enum AuthSessionStatus {
+  AUTH_SESSION_STATUS_UNSPECIFIED = 0;
+  AUTH_SESSION_STATUS_ACTIVE = 1;
+  AUTH_SESSION_STATUS_REVOKED = 2;
+  AUTH_SESSION_STATUS_EXPIRED = 3;
+}
+
+message AuthSessionsReq {
+  int32 page_size = 1 [(validate.rules).int32 = {gte: 1, lte: 100}];
+  AuthSessionStatus status = 2;
+}
+
+message AuthSessionItem {
+  string session_id = 1;
+  string status = 2;
+  string login_ip = 3;
+  string user_agent = 4;
+  string last_seen_at = 5;
+  string expired_at = 6;
+  string revoked_at = 7;
+  string revoked_reason = 8;
+}
+
+message AuthSessionsResp {
+  repeated AuthSessionItem items = 1;
+}
+
+message AuthSingleLoginSettingResp {
+  bool limit_single_login = 1;
+}
+
+message AuthUpdateSingleLoginSettingReq {
+  bool limit_single_login = 1;
+}
+
+message AuthPersonalSettingsResp {
+  bool limit_single_login = 1;
+  string background_image_url = 2;
+  string locale = 3;
+  bool global_background_apply_enabled = 4;
+  string avatar = 5;
+  int32 warm_tip_interval_minutes = 6;
+}
+
+message AuthUpdatePersonalSettingsReq {
+  bool limit_single_login = 1;
+  string background_image_url = 2 [(validate.rules).string = {max_len: 500}];
+  string locale = 3 [(validate.rules).string = {max_len: 32}];
+  optional bool global_background_apply_enabled = 4;
+  string avatar = 5 [(validate.rules).string = {max_len: 500}];
+  int32 warm_tip_interval_minutes = 6 [(validate.rules).int32 = {ignore_empty: true, in: [10, 60, 360, 720, 1440]}];
+}
+
+message AuthSystemSettingsResp {
+  string site_name = 1;
+  string locale = 2;
+  string timezone = 3;
+  string server_timezone = 4;
+  int32 login_lock_threshold = 5;
+  int32 password_min_length = 6;
+  int32 session_timeout_minutes = 7;
+  repeated string password_policy = 8;
+  bool global_watermark_enabled = 12;
+  int32 global_watermark_font_size = 13;
+}
+
+message AuthUpdateSystemSettingsReq {
+  string site_name = 1 [(validate.rules).string = {min_len: 1, max_len: 20}];
+  string locale = 2 [(validate.rules).string = {min_len: 1, max_len: 32}];
+  string timezone = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  int32 login_lock_threshold = 4 [(validate.rules).int32 = {gte: 3, lte: 20}];
+  int32 password_min_length = 5 [(validate.rules).int32 = {gte: 6, lte: 32}];
+  int32 session_timeout_minutes = 6 [(validate.rules).int32 = {gte: 1, lte: 43200}];
+  repeated string password_policy = 7;
+  bool global_watermark_enabled = 11;
+  int32 global_watermark_font_size = 12 [(validate.rules).int32 = {gte: 12, lte: 32}];
+}
+
+message AuthMeProfileResp {
+  int32 uid = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar = 4;
+  string email = 5;
+  string phone = 6;
+  repeated string menu_routes = 7 [(validate.rules).repeated = {max_items: 500, items: {string: {max_len: 200}}}];
+  repeated AuthMenuItem menu_items = 8;
+  AuthWarmTip warm_tip = 9;
+}
+
+message AuthMenuItem {
+  int64 id = 1;
+  int64 parent_id = 2;
+  string name = 3;
+  string route_path = 4;
+  string permission_key = 5;
+  int32 sort = 6;
+  repeated AuthMenuItem children = 7;
+  string icon = 8;
+}
+
+message AuthWarmTip {
+  int64 id = 1;
+  string tip_type = 2;
+  string content_zh = 3;
+  string content_en = 4;
+}

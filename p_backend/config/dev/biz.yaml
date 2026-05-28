@@ -1,0 +1,7 @@
+biz:
+  app_name: "xadmin-dev"
+  about:
+    name: "xadmin"
+    logo: ""
+    description: "xadmin backend service"
+    contact_wx: ""

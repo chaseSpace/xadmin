@@ -1,0 +1,10 @@
+.idea
+.vscode
+.git
+.DS_Store
+*proto/*pb
+zzz
+.ignore_acme
+.ignore_logs
+.ignore_storage
+wechat

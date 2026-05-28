@@ -1,0 +1,331 @@
+syntax = "proto3";
+package xadmin;
+option go_package = "monorepo/proto/xadminpb;xadmin";
+
+import "validator.proto";
+import "commpb/common.proto";
+
+enum SystemAuditResultFilter {
+  SYSTEM_AUDIT_RESULT_FILTER_UNSPECIFIED = 0;
+  SYSTEM_AUDIT_RESULT_FILTER_SUCCESS = 1;
+  SYSTEM_AUDIT_RESULT_FILTER_FAILED = 2;
+}
+
+message SystemAuditLogsReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string actor = 3 [(validate.rules).string = {max_len: 64}];
+  string action = 4 [(validate.rules).string = {max_len: 64}];
+  SystemAuditResultFilter result = 5;
+  string trace_id = 6 [(validate.rules).string = {max_len: 64}];
+  string source_ip = 7 [(validate.rules).string = {max_len: 64}];
+  string keyword = 8 [(validate.rules).string = {max_len: 128}];
+  commpb.TimeRange created_at = 9;
+  string request_id = 10 [(validate.rules).string = {max_len: 64}];
+}
+
+message SystemAuditLogItem {
+  int64 id = 1;
+  int32 uid = 2;
+  string actor = 3;
+  string action = 4;
+  string result = 5;
+  string trace_id = 6;
+  string source_ip = 7;
+  string user_agent = 8;
+  string detail = 9;
+  string created_at = 10;
+  string duration = 11;
+  string request_id = 12;
+}
+
+message SystemAuditLogsResp {
+  repeated SystemAuditLogItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message SystemAuditLogDetailReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message SystemAuditLogDetailResp {
+  int64 id = 1;
+  int32 uid = 2;
+  string actor = 3;
+  string action = 4;
+  string result = 5;
+  string trace_id = 6;
+  string source_ip = 7;
+  string user_agent = 8;
+  string detail = 9;
+  string created_at = 10;
+  string duration = 11;
+  string request_id = 12;
+}
+
+message SystemAuditLogRetentionReq {
+  int32 retain_days = 1 [(validate.rules).int32 = {gte: 1, lte: 3650}];
+  bool confirm = 2;
+}
+
+message SystemAuditLogRetentionResp {
+  bool success = 1;
+  int32 retain_days = 2;
+  int64 expired_count = 3;
+  int64 valid_count = 4;
+  string cutoff_at = 5;
+}
+
+enum SystemIPBanType {
+  SYSTEM_IP_BAN_TYPE_UNSPECIFIED = 0;
+  SYSTEM_IP_BAN_TYPE_TEMP = 1;
+  SYSTEM_IP_BAN_TYPE_PERMANENT = 2;
+}
+
+enum SystemIPBanStatusFilter {
+  SYSTEM_IP_BAN_STATUS_FILTER_UNSPECIFIED = 0;
+  SYSTEM_IP_BAN_STATUS_FILTER_ACTIVE = 1;
+  SYSTEM_IP_BAN_STATUS_FILTER_INACTIVE = 2;
+}
+
+message SystemIPBlacklistReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  SystemIPBanStatusFilter status = 4;
+  SystemIPBanType ban_type = 5;
+  string creator = 6 [(validate.rules).string = {max_len: 64}];
+}
+
+message SystemIPBlacklistItem {
+  int64 id = 1;
+  string ip = 2;
+  reserved 3;
+  string ban_type = 4;
+  string start_at = 5;
+  string end_at = 6;
+  string reason = 7;
+  string creator = 8;
+  string status = 9;
+  int32 hit_count = 10;
+  reserved 11;
+  string updated_at = 12;
+}
+
+message SystemIPBlacklistResp {
+  repeated SystemIPBlacklistItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message SystemCreateIPBlacklistReq {
+  string ip = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  reserved 2;
+  SystemIPBanType ban_type = 3;
+  string start_at = 4 [(validate.rules).string = {max_len: 32}];
+  string end_at = 5 [(validate.rules).string = {max_len: 32}];
+  string reason = 6 [(validate.rules).string = {min_len: 1, max_len: 255}];
+  string creator = 7 [(validate.rules).string = {max_len: 64}];
+}
+
+message SystemUpdateIPBlacklistReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  SystemIPBanType ban_type = 2;
+  string end_at = 3 [(validate.rules).string = {max_len: 32}];
+  string reason = 4 [(validate.rules).string = {min_len: 1, max_len: 255}];
+}
+
+message SystemIPBlacklistActionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message SystemIPBlacklistBatchUnblockReq {
+  repeated int64 ids = 1;
+}
+
+message SystemIPBlacklistImportReq {
+  repeated string ips = 1;
+  SystemIPBanType ban_type = 2;
+  int32 duration_hours = 3 [(validate.rules).int32 = {ignore_empty: true, gte: 1, lte: 720}];
+  string end_at = 4 [(validate.rules).string = {max_len: 32}];
+}
+
+enum SystemWarmTipStatusFilter {
+  SYSTEM_WARM_TIP_STATUS_FILTER_UNSPECIFIED = 0;
+  SYSTEM_WARM_TIP_STATUS_FILTER_ENABLED = 1;
+  SYSTEM_WARM_TIP_STATUS_FILTER_DISABLED = 2;
+}
+
+message SystemWarmTipsReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  string tip_type = 4 [(validate.rules).string = {max_len: 32}];
+  SystemWarmTipStatusFilter status = 5;
+}
+
+message SystemWarmTipItem {
+  int64 id = 1;
+  string tip_type = 2;
+  string content_zh = 3;
+  string content_en = 4;
+  int32 sort = 5;
+  int32 status = 6;
+  string updated_at = 7;
+}
+
+message SystemWarmTipsResp {
+  repeated SystemWarmTipItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message SystemCreateWarmTipReq {
+  string tip_type = 1 [(validate.rules).string = {min_len: 1, max_len: 32}];
+  string content_zh = 2 [(validate.rules).string = {min_len: 1, max_len: 160}];
+  string content_en = 3 [(validate.rules).string = {min_len: 1, max_len: 240}];
+  int32 sort = 4 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  int32 status = 5 [(validate.rules).int32 = {in: [0, 1]}];
+}
+
+message SystemUpdateWarmTipReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  string tip_type = 2 [(validate.rules).string = {min_len: 1, max_len: 32}];
+  string content_zh = 3 [(validate.rules).string = {min_len: 1, max_len: 160}];
+  string content_en = 4 [(validate.rules).string = {min_len: 1, max_len: 240}];
+  int32 sort = 5 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  int32 status = 6 [(validate.rules).int32 = {in: [0, 1]}];
+}
+
+message SystemWarmTipActionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message SystemActionResp {
+  bool success = 1;
+  string action = 2;
+}
+
+message SystemIPBlacklistCreatorsResp {
+  repeated string creators = 1;
+}
+
+// Alert Bot
+message SystemAlertBotItem {
+  int64 id = 1;
+  string name = 2;
+  string username = 3;
+  string token = 4;
+  string bot_type = 5;
+  bool enabled = 6;
+  repeated string linked_scene_keys = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message SystemAlertBotListReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  string bot_type = 4 [(validate.rules).string = {max_len: 16}];
+}
+
+message SystemAlertBotListResp {
+  repeated SystemAlertBotItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message SystemAlertBotSaveReq {
+  int64 id = 1;
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 20}];
+  string username = 3 [(validate.rules).string = {max_len: 30}];
+  string token = 4 [(validate.rules).string = {min_len: 1, max_len: 100}];
+  string bot_type = 5 [(validate.rules).string = {min_len: 1, max_len: 16}];
+  bool enabled = 6;
+}
+
+message SystemAlertBotActionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+// Alert Scene
+message SystemAlertSceneItem {
+  int64 id = 1;
+  string scene_key = 2;
+  int64 bot_id = 3;
+  string parse_mode = 4;
+  string group_name = 5;
+  string group_id = 6;
+  string notify_template = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message SystemAlertSceneListReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+}
+
+message SystemAlertSceneListResp {
+  repeated SystemAlertSceneItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message SystemAlertSceneSaveReq {
+  int64 id = 1;
+  string scene_key = 2 [(validate.rules).string = {min_len: 1, max_len: 20}];
+  int64 bot_id = 3;
+  string parse_mode = 4 [(validate.rules).string = {max_len: 16}];
+  string group_name = 5 [(validate.rules).string = {max_len: 20}];
+  string group_id = 6 [(validate.rules).string = {max_len: 20}];
+  string notify_template = 7 [(validate.rules).string = {max_len: 1000}];
+}
+
+message SystemAlertSceneActionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message SystemAlertSceneTestSendReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  map<string, string> variables = 2;
+}
+
+// Alert Template
+message SystemAlertTemplateItem {
+  int64 id = 1;
+  string bot_type = 2;
+  string name = 3;
+  string parse_mode = 4;
+  string content = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message SystemAlertTemplateListReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  string bot_type = 4 [(validate.rules).string = {max_len: 16}];
+}
+
+message SystemAlertTemplateListResp {
+  repeated SystemAlertTemplateItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message SystemAlertTemplateSaveReq {
+  int64 id = 1;
+  string bot_type = 2 [(validate.rules).string = {min_len: 1, max_len: 16}];
+  string name = 3 [(validate.rules).string = {min_len: 1, max_len: 30}];
+  string parse_mode = 4 [(validate.rules).string = {max_len: 16}];
+  string content = 5 [(validate.rules).string = {min_len: 1, max_len: 1000}];
+}
+
+message SystemAlertTemplateActionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}

@@ -1,0 +1,56 @@
+syntax = "proto3";
+package commpb;
+// NOTE: keep go_package aligned with generated output dir: proto/xadminpb/commpb
+option go_package = "monorepo/proto/xadminpb/commpb";
+import "validator.proto";
+import "google/protobuf/any.proto";
+
+message StdResp {
+  int32 code = 1;
+  string message = 2;
+  google.protobuf.Any data = 3;
+}
+
+enum OrderType {
+  OT_Desc = 0; // 降序
+  OT_Asc = 1; // 升序
+}
+
+// 通用排序结构
+message SortArgs {
+  string order_field = 1 [(validate.rules).string.min_len = 1]; // 指定排序字段
+  OrderType order_type = 2 [(validate.rules).enum.defined_only = true]; // 指定排序方式
+}
+
+message PageArgs{
+  int32 pn = 1 [(validate.rules).int32.gte = 1]; // page number
+  int32 ps = 2 [(validate.rules).int32.gte = 1]; // page size
+  bool is_download = 3; // 前端导出数据时用，true时后端会放开ps上限（无导出功能时可不传）
+}
+
+// YYYY-MM-DD HH:mm:ss 通常用于搜索
+message TimeRange {
+  string start_dt = 1 [(validate.rules).string.pattern = "^$|^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"];
+  string end_dt = 2 [(validate.rules).string.pattern = "^$|^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"];
+}
+
+message EmptyRes{}
+
+message TimeRangeArray{
+  repeated string list = 1;
+}
+
+message FloatRange {
+  float min = 1;
+  float max = 2;
+}
+
+message Int32Range {
+  int32 min = 1;
+  int32 max = 2;
+}
+
+message Geometry {
+  string lng = 1; // 经度
+  string lat = 2; // 纬度
+}

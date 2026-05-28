@@ -1,0 +1,4 @@
+username,password,display_name,email,phone,status(可选:启用/停用/已注销)
+user_demo_001,Reset@123456,演示用户A,user_demo_001@example.com,13800000001,启用
+user_demo_002,Reset@123456,演示用户B,user_demo_002@example.com,13800000002,停用
+user_demo_003,Reset@123456,演示用户C,user_demo_003@example.com,13800000003,已注销

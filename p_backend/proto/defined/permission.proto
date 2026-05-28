@@ -1,0 +1,164 @@
+syntax = "proto3";
+package xadmin;
+option go_package = "monorepo/proto/xadminpb;xadmin";
+
+import "validator.proto";
+import "commpb/common.proto";
+
+enum PermissionMenuType {
+  PERMISSION_MENU_TYPE_UNSPECIFIED = 0;
+  PERMISSION_MENU_TYPE_DIRECTORY = 1;
+  PERMISSION_MENU_TYPE_MENU = 2;
+  PERMISSION_MENU_TYPE_BUTTON = 3;
+}
+
+enum PermissionMenuFilterStatus {
+  PERMISSION_MENU_FILTER_STATUS_UNSPECIFIED = 0;
+  PERMISSION_MENU_FILTER_STATUS_ENABLED = 1;
+  PERMISSION_MENU_FILTER_STATUS_DISABLED = 2;
+}
+
+enum PermissionMenuDeletedFilter {
+  PERMISSION_MENU_DELETED_FILTER_UNSPECIFIED = 0;
+  PERMISSION_MENU_DELETED_FILTER_NO = 1;
+  PERMISSION_MENU_DELETED_FILTER_YES = 2;
+}
+
+message PermissionMenusReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  PermissionMenuFilterStatus status = 4;
+  PermissionMenuType menu_type = 5;
+  int64 tree_node_id = 6 [(validate.rules).int64 = {gte: 0}];
+  PermissionMenuDeletedFilter deleted = 7;
+}
+
+message PermissionMenuItem {
+  int64 id = 1;
+  int64 parent_id = 2;
+  string name = 3;
+  string route_path = 4;
+  string component_path = 5;
+  string menu_type = 6;
+  string permission_key = 7;
+  int32 sort = 8;
+  string status = 9;
+  string updated_at = 10;
+  bool deleted = 11;
+  string deleted_at = 12;
+}
+
+message PermissionMenusResp {
+  repeated PermissionMenuItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message PermissionMenuTreeResp {
+  repeated PermissionMenuNode items = 1;
+}
+
+message PermissionMenuNode {
+  int64 id = 1;
+  int64 parent_id = 2;
+  string name = 3;
+  repeated PermissionMenuNode children = 4;
+}
+
+message PermissionMenuDetailReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message PermissionCreateMenuReq {
+  int64 parent_id = 1 [(validate.rules).int64 = {gte: 0}];
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string route_path = 3 [(validate.rules).string = {max_len: 255}];
+  string component_path = 4 [(validate.rules).string = {max_len: 255}];
+  PermissionMenuType menu_type = 5;
+  string permission_key = 6 [(validate.rules).string = {max_len: 128}];
+  int32 sort = 7 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+}
+
+message PermissionUpdateMenuReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string route_path = 3 [(validate.rules).string = {max_len: 255}];
+  string component_path = 4 [(validate.rules).string = {max_len: 255}];
+  PermissionMenuType menu_type = 5;
+  string permission_key = 6 [(validate.rules).string = {max_len: 128}];
+  int32 sort = 7 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+}
+
+message PermissionUpdateMenuStatusReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  bool enabled = 2;
+}
+
+message PermissionDeleteMenuReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+enum PermissionRoleType {
+  PERMISSION_ROLE_TYPE_UNSPECIFIED = 0;
+  PERMISSION_ROLE_TYPE_SYSTEM = 1;
+  PERMISSION_ROLE_TYPE_CUSTOM = 2;
+}
+
+message PermissionRolesReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  PermissionRoleType role_type = 4;
+}
+
+message PermissionRoleItem {
+  int64 id = 1;
+  string role_name = 2;
+  string role_type = 3;
+  int32 users = 5;
+  string updated_at = 6;
+}
+
+message PermissionRolesResp {
+  repeated PermissionRoleItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message PermissionRoleDetailReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message PermissionCreateRoleReq {
+  string role_name = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  PermissionRoleType role_type = 2;
+}
+
+message PermissionUpdateRoleReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  string role_name = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  PermissionRoleType role_type = 3;
+}
+
+message PermissionDeleteRoleReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message PermissionRoleMenusReq {
+  int64 role_id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message PermissionRoleMenusResp {
+  repeated int64 menu_ids = 1;
+}
+
+message PermissionUpdateRoleMenusReq {
+  int64 role_id = 1 [(validate.rules).int64 = {gt: 0}];
+  repeated int64 menu_ids = 2;
+}
+
+message PermissionActionResp {
+  bool success = 1;
+  string action = 2;
+}

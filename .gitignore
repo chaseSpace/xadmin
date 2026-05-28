@@ -1,0 +1,12 @@
+log/
+tmp/
+.idea/
+.vscode/
+.DS_Store
+.pnpm-store/
+p_backend/.ignore_logs/
+p_backend/.ignore_storage/
+p_backend/.ignore_acme
+p_backend/server
+p_backend/config/prod/
+p_backend/nohup.log

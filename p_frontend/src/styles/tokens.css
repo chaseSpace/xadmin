@@ -1,0 +1,48 @@
+:root {
+  --font-sans: 'Avenir Next', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-size-12: 12px;
+  --font-size-14: 14px;
+  --font-size-16: 16px;
+  --font-size-20: 20px;
+  --font-size-24: 24px;
+
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-6: 48px;
+
+  --duration-fast: 160ms;
+  --duration-normal: 240ms;
+  --duration-slow: 320ms;
+
+  --color-bg: #eef3fb;
+  --color-bg-panel: #ffffff;
+  --color-header-bg: rgba(248, 250, 254, 0.96);
+  --color-text: #162447;
+  --color-text-secondary: #4a5a7a;
+  --color-border: #d5deec;
+  --color-shell: #f8fafd;
+  --color-brand: #0f6dff;
+  --color-shell-muted: #edf2f8;
+  --color-shell-elevated: #f8fafd;
+  --color-shell-panel: #f5f8fc;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #10141c;
+  --color-bg-panel: #171d28;
+  --color-header-bg: rgba(20, 25, 34, 0.96);
+  --color-text: #e8eefc;
+  --color-text-secondary: #b6becd;
+  --color-border: #303846;
+  --color-shell: #151a23;
+  --color-brand: #4d8dff;
+  --color-shell-muted: #111720;
+  --color-shell-elevated: #1b2230;
+  --color-shell-panel: #181f2b;
+}

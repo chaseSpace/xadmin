@@ -1,0 +1,72 @@
+# 滚动日志通用配置（被下方各日志模块引用）
+rolling_log: &rolling_log
+  max_size: 50       # 单个日志文件最大 MB
+  max_backups: 7     # 保留的旧日志文件数量
+
+app:
+  misc:
+    print_route_on_start: true                          # 启动时打印所有注册路由
+    ip2region_xdb_path: "./config/public/ip2region_v4.xdb"  # IP 归属地离线数据库路径
+
+  server:
+    host: "localhost"
+    port: "6666"
+    env: "dev"
+    timezone: "Asia/Shanghai"                           # 系统时区，影响日志和审计时间
+    storage_path: "./.ignore_storage"                   # 文件上传本地存储根目录
+    domain_cert:                                        # ACME 自动 HTTPS 证书（可选，留空则不启用）
+      domain: ["your-domain.example.com"]               # 需要签发证书的域名列表
+      acme_email: your-email@example.com                # ACME 注册邮箱
+      acme_token: your-acme-api-token                   # DNS 服务商 API Token（用于 DNS-01 验证）
+      acme_user: your-acme-username                     # DNS 服务商用户名
+      acme_server: https://api.name.com                 # DNS 服务商 API 地址
+      cert_dir: "./.ignore_acme"                        # 证书本地缓存目录
+
+  database:
+    type: "pgsql"
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "123"
+    name: "postgres"
+    ssl_mode: "disable"                                 # PostgreSQL SSL 模式：disable/require/verify-full
+    log_path: "./.ignore_logs/sql.log"                  # SQL 慢查询日志输出路径
+    output_stdout: true                                 # 是否同时输出 SQL 日志到控制台
+    rolling_log: *rolling_log
+
+  redis:
+    host: "localhost"
+    port: 6379
+    password: "123"
+    db: 0
+    pool_size: 10                                       # Redis 连接池大小
+
+  auth:
+    secret: change-me-to-a-random-string                # JWT 签名密钥，生产环境务必更换
+    token_ttl_hours: 240                                # Token 有效期（小时）
+
+# HTTP 请求日志（记录每次 API 请求的方法/路径/耗时/状态码）
+request_log:
+  level: "debug"                                        # 日志级别：debug/info/warn/error
+  encoding: "console"                                   # 编码格式：console（可读）/ json（结构化）
+  output_path: "./.ignore_logs/request.log"
+  output_to_stdout: true
+  rolling_log: *rolling_log
+  encoder_config:
+    message_key: "message"
+    time_key: "time"
+    level_key: "level"
+    level_encoder: "lowercase"
+
+# 应用业务日志（业务逻辑中的 info/error 等）
+app_log:
+  level: "debug"
+  encoding: "console"
+  output_path: "./.ignore_logs/app.log"
+  output_to_stdout: true
+  rolling_log: *rolling_log
+  encoder_config:
+    message_key: "message"
+    time_key: "time"
+    level_key: "level"
+    level_encoder: "lowercase"

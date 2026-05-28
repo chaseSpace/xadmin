@@ -1,0 +1,240 @@
+syntax = "proto3";
+package xadmin;
+option go_package = "monorepo/proto/xadminpb;xadmin";
+
+import "validator.proto";
+import "commpb/common.proto";
+import "auth.proto";
+
+enum OrganizationUserFilterStatus {
+  ORGANIZATION_USER_FILTER_STATUS_UNSPECIFIED = 0;
+  ORGANIZATION_USER_FILTER_STATUS_ACTIVE = 1;
+  ORGANIZATION_USER_FILTER_STATUS_DISABLED = 2;
+  ORGANIZATION_USER_FILTER_STATUS_DEACTIVATED = 3;
+}
+
+message OrganizationUsersReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  string phone = 4 [(validate.rules).string = {max_len: 32}];
+  OrganizationUserFilterStatus status = 5;
+  string created_from = 6 [(validate.rules).string = {max_len: 32}];
+  string created_to = 7 [(validate.rules).string = {max_len: 32}];
+  int64 department_id = 8 [(validate.rules).int64 = {gte: 0}];
+  int64 position_id = 9 [(validate.rules).int64 = {gte: 0}];
+}
+
+message OrganizationUserItem {
+  int32 uid = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar = 4;
+  string email = 5;
+  string phone = 6;
+  string account_status = 7;
+  string online_status = 8;
+  int32 active_session_count = 9;
+  string last_login_ip = 10;
+  string last_login_at = 11;
+  int64 department_id = 12;
+  string department_name = 13;
+  int64 position_id = 14;
+  string position_name = 15;
+  repeated string role_names = 16;
+}
+
+message OrganizationUsersResp {
+  repeated OrganizationUserItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message OrganizationCreateUserReq {
+  string username = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string password = 2 [(validate.rules).string = {min_len: 6, max_len: 128}];
+  string display_name = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string email = 4 [(validate.rules).string = {max_len: 128}];
+  string phone = 5 [(validate.rules).string = {max_len: 32}];
+  int32 status = 6 [(validate.rules).int32 = {gte: 0, lte: 2}];
+  int64 department_id = 7 [(validate.rules).int64 = {gte: 0}];
+  int64 position_id = 8 [(validate.rules).int64 = {gte: 0}];
+}
+
+message OrganizationUpdateUserReq {
+  int32 uid = 1 [(validate.rules).int32 = {gt: 0}];
+  string display_name = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string avatar = 3 [(validate.rules).string = {max_len: 255}];
+  string email = 4 [(validate.rules).string = {max_len: 128}];
+  string phone = 5 [(validate.rules).string = {max_len: 32}];
+  int32 status = 6 [(validate.rules).int32 = {gte: 0, lte: 2}];
+  int64 department_id = 7 [(validate.rules).int64 = {gte: 0}];
+  int64 position_id = 8 [(validate.rules).int64 = {gte: 0}];
+}
+
+message OrganizationResetPasswordReq {
+  int32 uid = 1 [(validate.rules).int32 = {gt: 0}];
+  string new_password = 2 [(validate.rules).string = {max_len: 128}];
+}
+
+message OrganizationDeleteUserReq {
+  int32 uid = 1 [(validate.rules).int32 = {gt: 0}];
+}
+
+message OrganizationActionResp {
+  bool success = 1;
+  string action = 2;
+  string temp_password = 3;
+}
+
+message OrganizationImportUserItem {
+  string username = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string password = 2 [(validate.rules).string = {max_len: 128}];
+  string display_name = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string email = 4 [(validate.rules).string = {max_len: 128}];
+  string phone = 5 [(validate.rules).string = {max_len: 32}];
+  int32 status = 6 [(validate.rules).int32 = {gte: 0, lte: 2}];
+}
+
+message OrganizationImportUsersReq {
+  repeated OrganizationImportUserItem items = 1;
+}
+
+message OrganizationUserSessionsReq {
+  int32 uid = 1 [(validate.rules).int32 = {gt: 0}];
+  int32 page_size = 2 [(validate.rules).int32 = {gte: 1, lte: 100}];
+  AuthSessionStatus status = 3;
+}
+
+message OrganizationUserSessionsResp {
+  repeated AuthSessionItem items = 1;
+}
+
+enum OrganizationDepartmentStatus {
+  ORGANIZATION_DEPARTMENT_STATUS_UNSPECIFIED = 0;
+  ORGANIZATION_DEPARTMENT_STATUS_ENABLED = 1;
+  ORGANIZATION_DEPARTMENT_STATUS_DISABLED = 2;
+}
+
+message OrganizationDepartmentItem {
+  int64 id = 1;
+  int64 parent_id = 2;
+  string name = 3;
+  string code = 4;
+  reserved 5;
+  string status = 6;
+  int32 member_count = 7;
+  string updated_at = 8;
+  repeated OrganizationDepartmentItem children = 9;
+  int32 position_count = 10;
+}
+
+message OrganizationDepartmentsTreeResp {
+  repeated OrganizationDepartmentItem items = 1;
+}
+
+message OrganizationDepartmentDetailReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message OrganizationCreateDepartmentReq {
+  int64 parent_id = 1 [(validate.rules).int64 = {gte: 0}];
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string code = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  reserved 4;
+}
+
+message OrganizationUpdateDepartmentReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string code = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  reserved 4;
+}
+
+message OrganizationUpdateDepartmentStatusReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  bool enabled = 2;
+}
+
+message OrganizationDeleteDepartmentReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  bool force = 2;
+}
+
+enum OrganizationPositionFilterStatus {
+  ORGANIZATION_POSITION_FILTER_STATUS_UNSPECIFIED = 0;
+  ORGANIZATION_POSITION_FILTER_STATUS_ENABLED = 1;
+  ORGANIZATION_POSITION_FILTER_STATUS_DISABLED = 2;
+}
+
+message OrganizationPositionsReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  int64 department_id = 4 [(validate.rules).int64 = {gte: 0}];
+  string level = 5 [(validate.rules).string = {max_len: 32}];
+  OrganizationPositionFilterStatus status = 6;
+}
+
+message OrganizationPositionItem {
+  int64 id = 1;
+  string name = 2;
+  string code = 3;
+  int64 department_id = 4;
+  string department_name = 5;
+  string level = 6;
+  int32 hc = 7;
+  int32 staffed = 8;
+  string status = 9;
+  string updated_at = 10;
+  repeated int64 role_ids = 11;
+  repeated string role_names = 12;
+  int32 related_count = 13;
+}
+
+message OrganizationBatchTransferUsersReq {
+  repeated int32 uids = 1 [(validate.rules).repeated = {min_items: 1, max_items: 200, items: {int32: {gt: 0}}}];
+  int64 department_id = 2 [(validate.rules).int64 = {gt: 0}];
+  int64 position_id = 3 [(validate.rules).int64 = {gt: 0}];
+}
+
+message OrganizationPositionsResp {
+  repeated OrganizationPositionItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+}
+
+message OrganizationPositionDetailReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message OrganizationCreatePositionReq {
+  string name = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string code = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  int64 department_id = 3 [(validate.rules).int64 = {gt: 0}];
+  string level = 4 [(validate.rules).string = {min_len: 1, max_len: 32}];
+  int32 hc = 5 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  int32 staffed = 6 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  repeated int64 role_ids = 7 [(validate.rules).repeated = {max_items: 100, items: {int64: {gt: 0}}}];
+}
+
+message OrganizationUpdatePositionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string code = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  int64 department_id = 4 [(validate.rules).int64 = {gt: 0}];
+  string level = 5 [(validate.rules).string = {min_len: 1, max_len: 32}];
+  int32 hc = 6 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  int32 staffed = 7 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  int32 status = 8 [(validate.rules).int32 = {gte: 0, lte: 1}];
+  repeated int64 role_ids = 9 [(validate.rules).repeated = {max_items: 100, items: {int64: {gt: 0}}}];
+}
+
+message OrganizationUpdatePositionStatusReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  bool enabled = 2;
+}
+
+message OrganizationDeletePositionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}

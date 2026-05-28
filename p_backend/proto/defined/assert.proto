@@ -1,0 +1,32 @@
+syntax = "proto3";
+package xadmin;
+option go_package = "monorepo/proto/xadminpb;xadmin";
+import "validator.proto";
+
+enum UploadScene {
+  US_Unknown = 0;
+  US_Avatar = 1; // 用户头像
+  US_BarLogo = 10; // bar logo
+  US_BarAlbum = 11; // bar 相册
+  US_EventCover  = 12; // 活动封面
+  US_EventMisc = 13; // 活动相关的其他图片，如品牌方、嘉宾头像
+  US_BartenderProofImg = 14; // Bartender 认证图片
+  US_BarProofImg = 15; // Bar 认证图片
+  US_ResourceImage = 30; // 文件管理图片
+  US_ResourceAudio = 31; // 文件管理语音
+  US_ResourceVideo = 32; // 文件管理视频
+  US_ResourceDocument = 33; // 文件管理文档
+  US_ResourceArchive = 34; // 文件管理压缩包
+}
+
+message UploadFileReq {
+  UploadScene scene = 1 [(validate.rules).enum = {defined_only: true}];
+}
+message UploadFileResp {
+  string file_url = 1; // 不含域名的部分：/uploads/SCENE_xx/UID_TIMESTAMP.ext
+}
+
+message GetFileReq {
+  string file_url = 1; // 不含域名的部分：/uploads/SCENE_xx/UID_TIMESTAMP.ext
+  bool is_download = 2; // 是否以附件下载方式，否则设置对应的content-type给前端直接渲染
+}

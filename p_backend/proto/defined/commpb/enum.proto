@@ -1,0 +1,139 @@
+syntax = "proto3";
+package commpb;
+option go_package = "monorepo/proto/monopb/commpb";
+
+// 此文件归纳所有枚举类型
+
+enum Gender {
+  G_UNKNOWN = 0;
+  G_MALE = 1;
+  G_FEMALE = 2;
+}
+
+// 用户注册/登录方式
+enum UserSignupWay {
+  USW_UNKNOWN = 0;
+  USW_EMAIL_CODE = 1;
+  USW_PHONE_CODE = 2;
+
+  USW_WX_MINI = 10;
+}
+
+enum UserStatus {
+  US_NORMAL = 0;
+  US_BANNED = 10; // 永久封禁
+  US_DELETED = 11; // 彻底删除
+  US_FROZEN = 12; // 冻结、暂时不可登录，可解冻
+}
+
+enum CaptchaType {
+  CT_UNKNOWN = 0;
+  CT_EMAIL_SIGNUP = 1;
+  CT_PHONE_SIGNUP = 2;
+
+  CT_EMAIL_SIGNIN = 11;
+  CT_PHONE_SIGNIN = 22;
+}
+
+// -------- bar
+
+enum BarStatus {
+  BS_UNKNOWN = 0;
+  BS_NORMAL = 1; // 正常营业
+  BS_CLOSED = 10; // 停业
+  BS_DELETED = 11; // 删除
+}
+
+// --------- apply
+
+enum ApplyAuthBarOwnerStatus {
+  ABOS_NO_APPLY = 0;
+  ABOS_PENDING = 1;
+  ABOS_APPROVED = 6;
+  ABOS_REJECTED = 7;
+}
+
+enum ApplyAuthBartenderStatus {
+  ABS_NO_APPLY = 0;
+  ABS_PENDING = 1;
+  ABS_APPROVED = 6;
+  ABS_REJECTED = 7;
+}
+
+enum EventOrderStatus {
+  EOS_UNKNOWN = 0;
+  EOS_pending = 1; // 待支付
+  EOS_paid = 2; // 已支付
+  EOS_cancelled = 3; // 已取消
+  EOS_refund_applied = 7; // 提交退款申请
+  EOS_refund_approved = 8; // 商家同意退款
+  EOS_refund_rejected = 9; // 商家拒绝退款
+  EOS_refunded = 10; // 平台同意退款
+}
+
+enum EventStatus {
+  ES_Pending = 0; // 审核中
+  ES_Approved = 1; // 审核通过
+  ES_Rejected = 2; // 审核拒绝
+  ES_Canceled = 3; // 已中止，不可删
+}
+
+// 仅用作查询参数
+enum EventStatusQuery {
+  ESQ_None = 0;
+  ESQ_Ing = 1; // 已开始
+  ESQ_CheckNeed = 2; // 待参加
+  ESQ_End = 3; // 已结束
+}
+
+
+// 公开可见的活动状态（审核通过）
+enum EventStatusPublic {
+  ESP_None = 0; // 未知
+  ESP_NotSale = 1; // 等待售票
+  ESP_InSale = 2;         // 开放售票
+  ESP_SalePaused = 3;     // 售票暂停
+  ESP_StartPending = 4; // 待开始
+  ESP_Started = 5;   // 已开始
+  ESP_Ended = 6;     // 已结束
+  ESP_Canceled = 7;  // 已中止
+}
+
+enum EventStatusForBar {
+  ESE_None = 0; // 未知
+  ESE_Reviewing = 8;    // 审核中
+  ESE_ReviewRejected = 9; // 审核被拒
+  ESE_NotSale = 1; // 等待售票
+  ESE_InSale = 2;         // 开放售票
+  ESE_SalePaused = 3;     // 售票暂停
+  ESE_StartPending = 4; // 待开始
+  ESE_Started = 5;   // 已开始
+  ESE_Ended = 6;     // 已结束
+  ESE_Canceled = 7;  // 已中止
+}
+
+message EventStatusForBarCell {
+  EventStatusForBar status = 1;
+  string color = 2;
+  string text = 3;
+}
+
+enum JoinedEventStatus {
+  JES_None = 0; // 未知
+  JES_EventStartPending = 1; // 待开始
+  JES_OrderCheckNeed = 2; // 待核销
+  JES_OrderChecked = 3; // 已核销
+  JES_EventStarted = 4; // 进行中
+  JES_EventEnded = 5; // 已结束
+  JES_EventCanceled = 6; // 已中止
+  JES_OrderCancelled = 7; // 订单取消
+  JES_OrderRefundApplied = 8; // 申请退款
+  JES_OrderRefunded = 9; // 已退款
+  JES_OrderRefundRejected = 10; // 退款被拒绝
+}
+
+message JoinedEventStatusCell {
+  JoinedEventStatus status = 1;
+  string color = 2;
+  string text = 3;
+}

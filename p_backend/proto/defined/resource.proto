@@ -1,0 +1,93 @@
+syntax = "proto3";
+package xadmin;
+option go_package = "monorepo/proto/xadminpb;xadmin";
+
+import "validator.proto";
+import "commpb/common.proto";
+import "google/protobuf/wrappers.proto";
+
+enum ResourceFileType {
+  RESOURCE_FILE_TYPE_UNSPECIFIED = 0;
+  RESOURCE_FILE_TYPE_IMAGE = 1;
+  RESOURCE_FILE_TYPE_AUDIO = 2;
+  RESOURCE_FILE_TYPE_VIDEO = 3;
+  RESOURCE_FILE_TYPE_DOCUMENT = 4;
+  RESOURCE_FILE_TYPE_ARCHIVE = 5;
+}
+
+enum ResourceFileAccessMode {
+  RESOURCE_FILE_ACCESS_MODE_UNSPECIFIED = 0;
+  RESOURCE_FILE_ACCESS_MODE_PREVIEW = 1;
+  RESOURCE_FILE_ACCESS_MODE_DOWNLOAD = 2;
+}
+
+message ResourceFilesReq {
+  commpb.PageArgs page = 1;
+  repeated commpb.SortArgs sort = 2;
+  string keyword = 3 [(validate.rules).string = {max_len: 64}];
+  ResourceFileType file_type = 4;
+  optional bool exists = 5;
+}
+
+message ResourceFileItem {
+  int64 id = 1;
+  string file_type = 2;
+  string name = 3;
+  string file_url = 4;
+  string mime_type = 5;
+  string extension = 6;
+  int64 size_bytes = 7;
+  string remark = 8;
+  string uploaded_at = 9;
+  string last_access_at = 10;
+  int32 access_count = 11;
+  google.protobuf.BoolValue exists = 12;
+  bool require_auth = 13;
+  string exists_checked_at = 14;
+  string access_mode = 15;
+}
+
+message ResourceFilesResp {
+  repeated ResourceFileItem items = 1;
+  int64 total = 2;
+  commpb.PageArgs page = 3;
+  int64 total_size_bytes = 4;
+}
+
+message ResourceUploadFileResp {
+  ResourceFileItem item = 1;
+}
+
+message ResourceUpdateFileReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 160}];
+  string remark = 3 [(validate.rules).string = {max_len: 50}];
+  bool require_auth = 4;
+  ResourceFileType file_type = 5 [(validate.rules).enum = {defined_only: true, not_in: [0]}];
+  ResourceFileAccessMode access_mode = 6 [(validate.rules).enum = {defined_only: true, not_in: [0]}];
+}
+
+message ResourceFileActionReq {
+  int64 id = 1 [(validate.rules).int64 = {gt: 0}];
+}
+
+message ResourceCheckFilesReq {
+  ResourceFileType file_type = 1 [(validate.rules).enum = {defined_only: true}];
+}
+
+message ResourceCheckFilesResp {
+  int64 checked_count = 1;
+  int64 exists_count = 2;
+  int64 missing_count = 3;
+}
+
+message ResourceFileAccessResp {
+  string file_url = 1;
+  int32 access_count = 2;
+  string last_access_at = 3;
+}
+
+message ResourceActionResp {
+  bool success = 1;
+  string action = 2;
+}
