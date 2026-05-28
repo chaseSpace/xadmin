@@ -23,6 +23,7 @@ type FilterFormValues = {
   action?: string
   result?: 'success' | 'failed'
   traceId?: string
+  requestId?: string
   sourceIp?: string
   keyword?: string
   time?: [{ toDate?: () => Date }, { toDate?: () => Date }]
