@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!**/*.md' ':!**/*.MD' ':!readme_static' ':!../*.md' ':!../AI_TODO.md' ':!../.gitignore'",
   "rewrites": [
     { "source": "/v1/:path*", "destination": "http://216.45.63.187:6666/v1/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
