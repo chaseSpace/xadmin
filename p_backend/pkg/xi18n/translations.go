@@ -22,7 +22,7 @@ func init() {
 	// organization
 	Register("org.max_depth", "最多只支持4级部门", "Maximum 4 levels of departments")
 	Register("org.has_members", "该部门下仍有 %d 个成员，请先转移成员后再删除", "Department still has %d members, please transfer them first")
-	Register("org.has_children_force", "该部门下存在下级部门或岗位，确认继续删除请再次提交 force=true", "Sub-departments or positions exist, submit with force=true to confirm")
+	Register("org.has_children_force", "该部门下存在下级部门或岗位，无法删除", "Sub-departments or positions exist, cannot delete")
 	Register("org.role_not_found", "包含不存在的角色", "Contains non-existent roles")
 	Register("org.cannot_disable_own_position", "不允许停用自己所在岗位", "Cannot disable your own position")
 	Register("org.cannot_disable_own_department", "不允许停用自己所在部门", "Cannot disable your own department")

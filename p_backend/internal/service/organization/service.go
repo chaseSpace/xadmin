@@ -187,7 +187,7 @@ func (s *service) DeleteDepartment(ctx context.Context, req *xadmin.Organization
 	if userCount > 0 {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.has_members", userCount)
 	}
-	if (hasChild || positionCount > 0) && !req.GetForce() {
+	if hasChild || positionCount > 0 {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.has_children_force")
 	}
 	if err := s.repo.SoftDeleteDepartmentByID(ctx, req.GetId()); err != nil {

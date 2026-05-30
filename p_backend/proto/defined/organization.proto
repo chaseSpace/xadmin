@@ -158,7 +158,6 @@ message OrganizationUpdateDepartmentStatusReq {
 
 message OrganizationDeleteDepartmentReq {
   int64 id = 1 [(validate.rules).int64 = {gt: 0}];
-  bool force = 2;
 }
 
 enum OrganizationPositionFilterStatus {

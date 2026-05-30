@@ -287,7 +287,7 @@ func (h *Handler) DeleteDepartment(c *fiber.Ctx) error {
 	if err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	req := &xadmin.OrganizationDeleteDepartmentReq{Id: id, Force: strings.EqualFold(strings.TrimSpace(c.Query("force")), "true") || strings.TrimSpace(c.Query("force")) == "1"}
+	req := &xadmin.OrganizationDeleteDepartmentReq{Id: id}
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
