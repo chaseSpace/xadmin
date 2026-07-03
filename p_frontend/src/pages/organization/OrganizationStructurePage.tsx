@@ -419,7 +419,7 @@ export function OrganizationStructurePage() {
                 },
                 {
                   title: t('直属岗位成员数量'),
-                  width: 125,
+                  width: 145,
                   render: (_, row) => {
                     const source = departmentMap.get(row.id) ?? row
                     return computeDepartmentStats(source).directMemberCount
