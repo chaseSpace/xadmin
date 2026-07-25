@@ -1,6 +1,7 @@
 package assert
 
 import (
+	"context"
 	"monorepo/internal/middleware"
 	assertrepo "monorepo/internal/repo/assert"
 	resourcerepo "monorepo/internal/repo/resource"
@@ -37,14 +38,19 @@ func (s *Service) UploadFile(c *fiber.Ctx, req *xadmin.UploadFileReq, fileField 
 }
 
 func (s *Service) GetFile(c *fiber.Ctx, req *xadmin.GetFileReq) error {
-	resourceFile, err := s.resourceRepo.GetFileByURL(c.UserContext(), req.GetFileUrl())
-	if err == nil && resourceFile.RequireAuth && middleware.GetUID(c) <= 0 {
+	resourceFile, lookupErr := s.resourceRepo.GetFileByURL(c.UserContext(), req.GetFileUrl())
+	if lookupErr == nil && resourceFile.RequireAuth && middleware.GetUID(c) <= 0 {
 		return xerr.NewWithDetail(xerr.CodeUnauthorized, "file access requires authorization")
 	}
 
 	fileData, err := s.repo.OpenFile(c.UserContext(), req.GetFileUrl())
 	if err != nil {
 		return err
+	}
+	if lookupErr == nil {
+		go func(id int64) {
+			_ = s.resourceRepo.MarkAccess(context.Background(), id)
+		}(resourceFile.ID)
 	}
 
 	// SendStream registers the reader on the response and fasthttp closes it after flushing.

@@ -53,7 +53,7 @@
 - 描述：软删除文件记录。
 
 ## POST /v1/resource/files/:id/access
-- 描述：返回文件地址、访问次数和上次访问时间；访问次数更新在后端异步执行。
+- 描述：返回文件地址、访问次数和上次访问时间；不直接更新访问统计，实际统计由 `/v1/assets/GetFile` 在文件成功打开后异步更新。
 
 ## POST /v1/resource/files/check
 - 描述：批量检测指定类型或全部文件是否仍存在，并更新列表中的 `exists` 与 `exists_checked_at`；后台同一时刻只允许一个检测任务运行。
@@ -65,4 +65,4 @@
   - `missing_count`：不存在数量
 
 ## GET /v1/assets/GetFile
-- 描述：读取文件内容。普通资源公开访问；`require_auth=true` 的资源必须携带有效登录 Token。
+- 描述：读取文件内容。普通资源公开访问；`require_auth=true` 的资源必须携带有效登录 Token。仅在物理文件成功打开后更新资源文件访问次数和上次访问时间；文件不存在时返回 not found，不更新访问统计。

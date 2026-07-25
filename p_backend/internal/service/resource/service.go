@@ -125,9 +125,6 @@ func (s *service) AccessFile(ctx context.Context, req *xadmin.ResourceFileAction
 	if err != nil {
 		return nil, err
 	}
-	go func(id int64) {
-		_ = s.repo.MarkAccess(context.Background(), id)
-	}(req.GetId())
 	return &xadmin.ResourceFileAccessResp{
 		FileUrl:      row.FileURL,
 		AccessCount:  row.AccessCount,
