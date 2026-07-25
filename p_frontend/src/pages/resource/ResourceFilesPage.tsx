@@ -10,7 +10,6 @@ import {
   FileTextOutlined,
   ExclamationCircleOutlined,
   QuestionCircleOutlined,
-  ReloadOutlined,
   VideoCameraOutlined,
   UploadOutlined,
   LinkOutlined,
@@ -631,19 +630,6 @@ export function ResourceFilesPage() {
                 onClick={batchCheckFiles}
               >
                 {t('批量检测文件有效性')}
-              </UiButton>
-              <UiButton
-                icon={<ReloadOutlined />}
-                disabled={checkingFiles}
-                onClick={() => {
-                  setSelectedType('all')
-                  setKeyword('')
-                  setPageNo(1)
-                  filterForm.resetFields()
-                  setSelectedRowKeys([])
-                }}
-              >
-                {t('重置')}
               </UiButton>
             </Space>
           </Space>
