@@ -91,10 +91,10 @@
 - 表格列表页需控制滚动区域，避免内容撑破布局。
 - 动效可用但应克制，优先保证信息密度与操作效率。
 
-## 8. 测试与校验（必须执行）
+## 8. 测试与校验
 在 `p_frontend` 目录执行：
 - `pnpm lint`
-- `pnpm typecheck`
+- `pnpm typecheck` (人工特别提醒触发)
 - `pnpm test`
 - `pnpm build`
 
