@@ -1,17 +1,18 @@
 SHELL := /bin/bash
 ENV ?= dev
-BIN := ./zzz/xadmin
+override ENV := $(or $(strip $(ENV)),dev)
+BIN ?= ./zzz/xadmin_$(ENV)
 SQL_DIR ?=
 TABLE ?=
 
-.PHONY: help before_run pb build pull run restart stop logs \
+.PHONY: help before_run pb build pull up restart stop logs \
 	fmt test vet check-no-automigrate check-sql-docs check-api-docs check-api-tests check-docs \
 	verify verify-fast verify-auth execsql showtable
 
 help:
 	@echo "Common targets:"
-	@echo "  make run ENV=dev         # generate pb + build + run server"
-	@echo "  make restart ENV=dev     # restart server"
+	@echo "  make up ENV=dev          # generate pb + build + start or restart server"
+	@echo "  make restart ENV=dev     # alias of up"
 	@echo "  make stop                # stop server"
 	@echo "  make logs                # tail server log"
 	@echo "  make verify              # format + test + docs/rules checks"
@@ -35,7 +36,7 @@ build: before_run
 	@echo "==> Building server binary"
 	@go build -o $(BIN) ./cmd/server/main.go
 
-run: pull pb build
+up: pull pb build
 	@echo "==> Running server (ENV=$(ENV))"
 	-@pkill -f "$(BIN)" || true
 	@APP_ENV=$(ENV) nohup $(BIN) > nohup.log 2>&1 &
@@ -43,7 +44,7 @@ run: pull pb build
 	@sleep 2
 	@tail -n 20 nohup.log
 
-restart: stop run
+restart: up
 
 stop:
 	@echo "==> Stopping server"

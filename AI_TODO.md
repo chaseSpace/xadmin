@@ -26,10 +26,4 @@
 
 为避免遗忘上方规则，请每次开始前输出“我已熟知规则”，以示记忆良好。
 
-- [x] 按照 [UI_DESIGN.MD](p_frontend/UI_DESIGN.MD) 调整 操作审计/关怀提示 表格页
-- [x] 添加一个 /system/ip-blacklist/creators 的API来让前端展示 创建者下拉列表
-- [x] 审计页面：RequestID加入TraceID后面作为新的筛选项；告诉我保留几日数据的逻辑
-- [x] 将 backend dev的配置中的真实key配置进行随机填充；prod列入忽略目录; .pnpm-store 应加入 .gitignore
-- [x] dev 中的配置字段进行详细注释，除了简单字段
-- [x] 这个项目准备开源，为此编写一个精美的readme.md。包含系统功能详细介绍，前后端技术栈介绍（分别跳转frontend.md/backend.md）
-  ，以及对AI_TODO.md 的介绍，以及部署文档。
+- [x] /assets/GetFile：在文件不存在时不要更新访问时间

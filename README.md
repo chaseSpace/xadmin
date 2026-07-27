@@ -133,6 +133,13 @@ xadmin/
 - Redis 3+
 - protoc（Protobuf 编译器）
 
+### Makefile 约定
+
+- 前后端 `ENV` 默认值均为 `dev`；显式传空值（如 `ENV=`）也会按 `dev` 处理。
+- 后端构建产物默认输出到 `p_backend/zzz/xadmin_<ENV>`，可通过 `BIN=...` 覆盖。
+- 前端静态部署目录默认是 `/usr/share/nginx/html_xadmin_<ENV>`，可通过 `NGINX_DIR=...` 覆盖。
+- 前端 `ENV=dev` 时执行 `make deploy` 或 `make up` 不会部署到 Nginx，只会打印跳过部署提示；`prod` / `beta` 等环境会正常部署。
+
 ### 后端启动
 
 ```bash
@@ -145,7 +152,7 @@ vim config/dev/app.yaml  # 修改数据库/Redis 连接信息
 make execsql ENV=dev
 
 # 3. 生成 Protobuf + 编译 + 启动
-make run ENV=dev
+make up ENV=dev
 ```
 
 ### 前端启动
@@ -174,18 +181,15 @@ pnpm dev
 ```bash
 cd p_backend
 
-# 编译
-go build -o xadmin ./cmd/server/main.go
-
 # 配置生产环境
 # 创建 config/prod/app.yaml（参考 config/dev/app.yaml）
 # 设置数据库、Redis、JWT Secret、ACME 证书等
 
-# 启动
-APP_ENV=prod ./xadmin
+# 生成 Protobuf + 编译到 zzz/xadmin_prod + 启动
+make up ENV=prod
 
-# 或者使用 makefile 快速启动/重启
-make run ENV=prod
+# 可选：覆盖二进制输出路径
+make build ENV=prod BIN=./zzz/xadmin
 ```
 
 后端支持 ACME 自动 HTTPS 证书签发，配置 `domain_cert` 即可自动申请和续期 TLS 证书。
@@ -195,10 +199,12 @@ make run ENV=prod
 ```bash
 cd p_frontend
 
-# 构建生产包
-pnpm build
+# 拉取代码 + 安装依赖 + 按 Vite production 模式构建，自动部署到指定的NGINX 目录
+# ENV: prod|beta
+make up ENV=prod
 
-# dist/ 目录部署到任意静态服务器（Nginx / Vercel / Cloudflare Pages）
+# dev 环境只构建，不执行 deploy
+make up ENV=dev
 ```
 
 项目已包含 `vercel.json`，可直接部署到 Vercel。
@@ -208,7 +214,8 @@ pnpm build
 ### 后端
 
 ```bash
-make run ENV=dev        # 启动开发服务器
+make up         # 启动开发服务器
+make build ENV=prod     # 编译到 zzz/xadmin_prod
 make verify             # 全量校验（fmt + test + vet + docs）
 make verify-fast        # 快速校验
 make pb                 # 生成 Protobuf 代码
@@ -219,8 +226,10 @@ make showtable TABLE=xx # 查看表结构
 ### 前端
 
 ```bash
-pnpm dev                # 开发服务器
-pnpm build              # 生产构建
+pnpm dev                # 启动开发服务器
+pnpm build              # 启动生产构建
+make up ENV=prod        # 部署服务器执行：一键完成代码拉取、安装、构建并部署到 Nginx
+make deploy             # 不编译，仅部署（dev环境不执行）
 pnpm check:all          # 全量检查（lint + typecheck + test + build）
 pnpm gen:types          # 从 OpenAPI 生成类型
 pnpm storybook          # 组件文档
