@@ -99,7 +99,7 @@
 - `pnpm build`
 
 或执行一键命令：
-- `pnpm check:all`
+- `pnpm check:all`（仅在要求时执行）
 
 规则：
 - 任一失败必须先修复再交付。
@@ -113,7 +113,7 @@
 3. 定义或复用 query keys
 4. 页面接入查询、表单校验、提交与刷新
 5. 补充对应测试（至少 API 层/关键页面交互）
-6. 跑 `pnpm check:all`
+6. 除非要求，否则不跑 `pnpm check:all`
 
 ### 9.2 接口字段变更
 1. 更新类型与 schema

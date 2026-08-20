@@ -9,6 +9,7 @@ import { UiButton } from '../../components/ui'
 import { useI18n } from '../../i18n/messages'
 import { useUiSettingsStore } from '../../store/uiSettings'
 import { formatDateTime } from '../../utils/timezone'
+import { applyRoleMenuCheckChange } from './roleMenuTree'
 import {
   createPermissionRole,
   deletePermissionRole,
@@ -42,28 +43,6 @@ function mapTree(nodes: PermissionMenuTreeNode[]): DataNode[] {
     children: mapTree(node.children),
   }))
 }
-
-function getDescendantKeys(nodes: PermissionMenuTreeNode[], parentId: string): string[] {
-  const keys: string[] = []
-  const walk = (list: PermissionMenuTreeNode[]) => {
-    for (const node of list) {
-      keys.push(String(node.id))
-      walk(node.children)
-    }
-  }
-  const find = (list: PermissionMenuTreeNode[]): PermissionMenuTreeNode | undefined => {
-    for (const node of list) {
-      if (String(node.id) === parentId) return node
-      const found = find(node.children)
-      if (found) return found
-    }
-    return undefined
-  }
-  const target = find(nodes)
-  if (target) walk(target.children)
-  return keys
-}
-
 
 export function PermissionRolesPage() {
   const { t } = useI18n()
@@ -403,36 +382,21 @@ export function PermissionRolesPage() {
           checkedKeys={{ checked: checkedMenuKeys, halfChecked: [] }}
           onCheck={(keys) => {
             const newKeys = Array.isArray(keys) ? keys : keys.checked
-            const newKeysStr = newKeys.map(String)
-            const prevKeys = checkedMenuKeys.map(String)
-            // 新增勾选：自动勾选所有下级
-            const added = newKeysStr.filter((k) => !prevKeys.includes(k))
-            let result = [...newKeysStr]
-            for (const key of added) {
-              const descendants = getDescendantKeys(menuTreeQuery.data ?? [], key)
-              for (const d of descendants) {
-                if (!result.includes(d)) result.push(d)
-              }
-            }
-            // 取消勾选：自动取消所有下级
-            const removed = prevKeys.filter((k) => !newKeysStr.includes(k))
-            for (const key of removed) {
-              const descendants = getDescendantKeys(menuTreeQuery.data ?? [], key)
-              result = result.filter((k) => !descendants.includes(k))
-            }
-            setCheckedMenuKeys(result)
+            setCheckedMenuKeys(
+              applyRoleMenuCheckChange(menuTreeQuery.data ?? [], checkedMenuKeys, newKeys),
+            )
           }}
           treeData={mapTree(menuTreeQuery.data ?? [])}
           onSelect={(_, { node }) => {
             const key = String(node.key)
-            const isChecked = checkedMenuKeys.map(String).includes(key)
-            const descendants = getDescendantKeys(menuTreeQuery.data ?? [], key)
-            if (isChecked) {
-              setCheckedMenuKeys(checkedMenuKeys.filter((k) => String(k) !== key && !descendants.includes(String(k))))
-            } else {
-              const result = [...checkedMenuKeys.map(String), key, ...descendants]
-              setCheckedMenuKeys([...new Set(result)])
-            }
+            const currentKeys = checkedMenuKeys.map(String)
+            const isChecked = currentKeys.includes(key)
+            const nextKeys = isChecked
+              ? currentKeys.filter((item) => item !== key)
+              : [...currentKeys, key]
+            setCheckedMenuKeys(
+              applyRoleMenuCheckChange(menuTreeQuery.data ?? [], checkedMenuKeys, nextKeys),
+            )
           }}
         />
       </Drawer>

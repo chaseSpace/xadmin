@@ -100,7 +100,7 @@ apiClient.interceptors.response.use(
           typeof (response.data as { message?: unknown })?.message === 'string'
             ? String((response.data as { message?: unknown }).message)
             : `请求失败（code=${code}）`
-        if (!skipGlobalErrorTip && !(code === 401 && unauthorizedFrozen)) {
+        if (!skipGlobalErrorTip && code !== 401) {
           notifyApiError(msg)
         }
         if (code === 401 && !skipUnauthorizedHandler) {
@@ -125,7 +125,7 @@ apiClient.interceptors.response.use(
     const skipGlobalErrorTip = maybeConfig?.skipGlobalErrorTip === true
     const skipUnauthorizedHandler = maybeConfig?.skipUnauthorizedHandler === true
 
-    if (!skipGlobalErrorTip && !(normalized.status === 401 && unauthorizedFrozen)) {
+    if (!skipGlobalErrorTip && normalized.status !== 401) {
       notifyApiError(normalized.message || '请求失败，请稍后重试')
     }
 
