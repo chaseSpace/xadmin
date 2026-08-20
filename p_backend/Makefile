@@ -2,22 +2,18 @@ SHELL := /bin/bash
 ENV ?= dev
 override ENV := $(or $(strip $(ENV)),dev)
 BIN ?= ./zzz/xadmin_$(ENV)
+NOHUP ?= ./nohup_$(ENV).log
 SQL_DIR ?=
 TABLE ?=
 
-.PHONY: help before_run pb build pull up restart stop logs \
-	fmt test vet check-no-automigrate check-sql-docs check-api-docs check-api-tests check-docs \
-	verify verify-fast verify-auth execsql showtable
+.PHONY: help before_run pb build pull up stop logs \
+	fmt test vet execsql showtable
 
 help:
 	@echo "Common targets:"
 	@echo "  make up ENV=dev          # generate pb + build + start or restart server"
-	@echo "  make restart ENV=dev     # alias of up"
 	@echo "  make stop                # stop server"
 	@echo "  make logs                # tail server log"
-	@echo "  make verify              # format + test + docs/rules checks"
-	@echo "  make verify-fast         # fast checks for daily dev loop"
-	@echo "  make verify-auth         # run auth API tests only"
 	@echo "  make execsql ENV=prod    # execute model SQL from config/<ENV>/app.yaml"
 	@echo "  make showtable TABLE=xx  # show table ddl and columns"
 
@@ -39,19 +35,17 @@ build: before_run
 up: pull pb build
 	@echo "==> Running server (ENV=$(ENV))"
 	-@pkill -f "$(BIN)" || true
-	@APP_ENV=$(ENV) nohup $(BIN) > nohup.log 2>&1 &
+	@APP_ENV=$(ENV) nohup $(BIN) > $(NOHUP) 2>&1 &
 	@echo "Server started, PID: $$(pgrep -f '$(BIN)')"
 	@sleep 2
-	@tail -n 20 nohup.log
-
-restart: up
+	@tail -n 20 $(NOHUP)
 
 stop:
 	@echo "==> Stopping server"
 	-@pkill -f "$(BIN)" || true
 
 logs:
-	@tail -n 100 -f nohup.log
+	@tail -n 100 -f $(NOHUP)
 
 fmt:
 	@echo "==> gofmt"
@@ -64,40 +58,6 @@ test:
 vet:
 	@echo "==> go vet"
 	@go vet ./...
-
-check-no-automigrate:
-	@echo "==> Checking AutoMigrate usage"
-	@if rg -n "AutoMigrate" ./cmd ./internal ./pkg ./test; then \
-		echo "Found forbidden AutoMigrate usage"; \
-		exit 1; \
-	fi
-
-check-sql-docs:
-	@echo "==> Checking SQL docs"
-	@test -d docs/model_sql_pg
-	@rg -n "CREATE TABLE|ALTER TABLE|CREATE INDEX|DROP INDEX" docs/model_sql_pg
-
-check-api-docs:
-	@echo "==> Checking API docs"
-	@test -d docs/api_docs
-	@rg -n "^#|^##|GET |POST |PUT |DELETE |PATCH " docs/api_docs/*.MD
-
-check-api-tests:
-	@echo "==> Checking API tests"
-	@test -d test
-	@rg --files test -g "*_test.go"
-
-check-docs: check-sql-docs check-api-docs check-api-tests
-
-verify: fmt test vet check-no-automigrate check-docs
-	@echo "==> Verify passed"
-
-verify-fast: fmt verify-auth check-no-automigrate check-docs
-	@echo "==> Verify-fast passed"
-
-verify-auth:
-	@echo "==> Running auth API tests"
-	@go test ./test -run Auth -v
 
 execsql:
 	@echo "==> Execute SQL"

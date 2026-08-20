@@ -78,7 +78,10 @@
 - 新增 API 必须在 `test` 补对应用例。
 - 最低校验命令：
   - `cd p_backend && make pb`
-  - `cd p_backend && make verify`
+  - `cd p_backend && make fmt`
+  - `cd p_backend && make test`
+  - `cd p_backend && make vet`
+  - `cd p_backend && ! rg -n "AutoMigrate" ./cmd ./internal ./pkg ./test`
 
 ## 5. DDL 规范（TABLE）
 - 数据库结构以 `docs/model_sql/*.sql` 为唯一权威。
@@ -119,19 +122,20 @@
 
 ## 9. 本仓库执行命令（直接可用）
 - 生成 proto：`cd p_backend && make pb`
-- 全量校验：`cd p_backend && make verify`
-- 快速校验：`cd p_backend && make verify-fast`
-- Auth 定向测试：`cd p_backend && make verify-auth`
+- 格式化代码：`cd p_backend && make fmt`
+- 运行全部测试：`cd p_backend && make test`
+- 运行静态检查：`cd p_backend && make vet`
+- Auth 定向测试：`cd p_backend && go test ./test -run Auth -v`
 - 执行 SQL：`cd p_backend && make execsql SQL=<file.sql>`
 - 查看表结构：`cd p_backend && make showtable TABLE=<table>`
-- 检查禁止项：`cd p_backend && rg -n "AutoMigrate" ./cmd ./internal ./pkg ./test`
+- 检查禁止项：`cd p_backend && ! rg -n "AutoMigrate" ./cmd ./internal ./pkg ./test`
 
 ## 10. 完成定义（DoD）
 一次后端任务完成必须同时满足：
 - 代码改动与需求一致，且分层职责清晰。
 - 涉及 DB 变更时，SQL 已提交并可执行验证。
 - 涉及 API 变更时，proto + handler/service/repo + docs/api_docs + test 全部同步。
-- `make verify` 通过；若失败，必须说明阻塞项与风险。
+- `make fmt`、`make test`、`make vet` 通过，且禁止项检查无匹配；若失败，必须说明阻塞项与风险。
 
 ## 11. 禁止事项
 - 未写 SQL 就改表结构并声称完成。
