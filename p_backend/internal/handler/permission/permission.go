@@ -422,7 +422,7 @@ func (h *Handler) UpdateRoleMenus(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.UpdateRoleMenus(c.UserContext(), req)
+	resp, err := h.svc.UpdateRoleMenus(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),

@@ -14,7 +14,8 @@ import (
 )
 
 type mockPermissionService struct {
-	lastMenusReq *xadmin.PermissionMenusReq
+	lastMenusReq                   *xadmin.PermissionMenusReq
+	lastUpdateRoleMenusOperatorUID int32
 }
 
 func (m *mockPermissionService) ListMenus(ctx context.Context, req *xadmin.PermissionMenusReq) (*xadmin.PermissionMenusResp, error) {
@@ -84,8 +85,9 @@ func (m *mockPermissionService) GetRoleMenus(ctx context.Context, req *xadmin.Pe
 	_ = req
 	return &xadmin.PermissionRoleMenusResp{MenuIds: []int64{1, 2, 3}}, nil
 }
-func (m *mockPermissionService) UpdateRoleMenus(ctx context.Context, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) UpdateRoleMenus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	m.lastUpdateRoleMenusOperatorUID = operatorUID
 	_ = req
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_role_menus"}, nil
 }
@@ -216,5 +218,17 @@ func TestPermissionRolesAPI(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("%s %s status=%d", tc.method, tc.path, resp.StatusCode)
 		}
+	}
+}
+
+func TestPermissionUpdateRoleMenusPassesOperatorUID(t *testing.T) {
+	svc := &mockPermissionService{}
+	app := setupPermissionAppWithMock(svc)
+	resp := request(t, app, http.MethodPost, "/v1/permission/roles/2/menus", map[string]any{"menu_ids": []int64{1, 2}})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status: %d", resp.StatusCode)
+	}
+	if svc.lastUpdateRoleMenusOperatorUID != 10001 {
+		t.Fatalf("expected operator uid=10001, got=%d", svc.lastUpdateRoleMenusOperatorUID)
 	}
 }

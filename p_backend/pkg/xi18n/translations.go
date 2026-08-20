@@ -42,6 +42,8 @@ func init() {
 	Register("perm.system_role_undeletable", "系统角色不可删除", "System role cannot be deleted")
 	Register("perm.role_affects_self", "该角色影响当前账号，不允许删除", "This role affects your account, cannot delete")
 	Register("perm.superadmin_immutable", "超管角色权限不可修改", "Super admin role permissions cannot be modified")
+	Register("perm.role_scope_exceeded", "目标角色的权限范围高于当前账号，不允许修改", "The target role has permissions beyond your scope and cannot be modified")
+	Register("perm.role_grant_exceeded", "不允许授予当前账号未拥有的权限", "Cannot grant permissions that your account does not have")
 	Register("perm.invalid_menu_type", "菜单类型参数不合法", "Invalid menu type parameter")
 	Register("perm.invalid_role_type", "角色类型参数不合法", "Invalid role type parameter")
 	// system

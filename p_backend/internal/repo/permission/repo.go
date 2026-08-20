@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"monorepo/internal/model"
+	"monorepo/pkg/consts"
 	"monorepo/pkg/db"
 	"monorepo/pkg/xerr"
 	commpb "monorepo/proto/xadminpb/commpb"
@@ -282,6 +283,46 @@ func (r *Repo) ListRoleMenuIDs(ctx context.Context, roleID int64) ([]int64, erro
 		Pluck("menu_id", &ids).Error
 	if err != nil {
 		return nil, xerr.WrapDBE(err, "list role menu ids")
+	}
+	return ids, nil
+}
+
+func (r *Repo) ListEnabledRoleMenuIDs(ctx context.Context, roleID int64) ([]int64, error) {
+	ids := make([]int64, 0, 32)
+	err := r.db.WithContext(ctx).
+		Table("permission_role_menu prm").
+		Select("m.id").
+		Joins("INNER JOIN permission_menu m ON m.id = prm.menu_id").
+		Where("prm.role_id = ? AND m.deleted_at = 0 AND m.status = ?", roleID, consts.PermissionStatusEnabled).
+		Order("m.id asc").
+		Pluck("m.id", &ids).Error
+	if err != nil {
+		return nil, xerr.WrapDBE(err, "list enabled role menu ids")
+	}
+	return ids, nil
+}
+
+func (r *Repo) ListEnabledMenuIDsByUID(ctx context.Context, uid int32) ([]int64, error) {
+	ids := make([]int64, 0, 32)
+	if uid <= 0 {
+		return ids, nil
+	}
+	err := r.db.WithContext(ctx).Raw(`
+SELECT DISTINCT m.id
+FROM permission_menu m
+INNER JOIN permission_role_menu prm ON prm.menu_id = m.id
+INNER JOIN permission_role r ON r.id = prm.role_id AND r.deleted_at = 0
+INNER JOIN (
+  SELECT opr.role_id
+  FROM admin_user u
+  INNER JOIN organization_position_role opr ON opr.position_id = u.position_id
+  WHERE u.uid = ? AND u.deleted_at = 0
+) ur ON ur.role_id = prm.role_id
+WHERE m.deleted_at = 0 AND m.status = ?
+ORDER BY m.id ASC
+`, uid, consts.PermissionStatusEnabled).Scan(&ids).Error
+	if err != nil {
+		return nil, xerr.WrapDBE(err, "list enabled menu ids by uid")
 	}
 	return ids, nil
 }

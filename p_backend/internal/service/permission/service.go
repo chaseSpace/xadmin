@@ -32,7 +32,7 @@ type Service interface {
 	UpdateRole(ctx context.Context, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error)
 	DeleteRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteRoleReq) (*xadmin.PermissionActionResp, error)
 	GetRoleMenus(ctx context.Context, req *xadmin.PermissionRoleMenusReq) (*xadmin.PermissionRoleMenusResp, error)
-	UpdateRoleMenus(ctx context.Context, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error)
+	UpdateRoleMenus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error)
 }
 
 type service struct {
@@ -312,7 +312,10 @@ func (s *service) GetRoleMenus(ctx context.Context, req *xadmin.PermissionRoleMe
 	return &xadmin.PermissionRoleMenusResp{MenuIds: ids}, nil
 }
 
-func (s *service) UpdateRoleMenus(ctx context.Context, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error) {
+func (s *service) UpdateRoleMenus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error) {
+	if operatorUID <= 0 {
+		return nil, xerr.NewBiz(xerr.CodeUnauthorized, "auth.not_logged_in")
+	}
 	role, err := s.repo.GetRoleByID(ctx, req.GetRoleId())
 	if err != nil {
 		return nil, err
@@ -320,15 +323,47 @@ func (s *service) UpdateRoleMenus(ctx context.Context, req *xadmin.PermissionUpd
 	if isRootAdminRole(role) {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "perm.superadmin_immutable")
 	}
+	operatorMenuIDs, err := s.repo.ListEnabledMenuIDsByUID(ctx, operatorUID)
+	if err != nil {
+		return nil, err
+	}
+	roleMenuIDs, err := s.repo.ListEnabledRoleMenuIDs(ctx, req.GetRoleId())
+	if err != nil {
+		return nil, err
+	}
+	if !menuIDsWithinScope(roleMenuIDs, operatorMenuIDs) {
+		return nil, xerr.NewBiz(xerr.CodeForbidden, "perm.role_scope_exceeded")
+	}
 	menuIDs, err := s.repo.ExpandMenuIDsWithAncestors(ctx, req.GetMenuIds())
 	if err != nil {
 		return nil, err
+	}
+	if !menuIDsWithinScope(menuIDs, operatorMenuIDs) {
+		return nil, xerr.NewBiz(xerr.CodeForbidden, "perm.role_grant_exceeded")
 	}
 	if err := s.repo.ReplaceRoleMenus(ctx, req.GetRoleId(), menuIDs); err != nil {
 		return nil, err
 	}
 	middleware.InvalidateAllPermissionCache()
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_role_menus"}, nil
+}
+
+func menuIDsWithinScope(menuIDs, scopeMenuIDs []int64) bool {
+	scope := make(map[int64]struct{}, len(scopeMenuIDs))
+	for _, menuID := range scopeMenuIDs {
+		if menuID > 0 {
+			scope[menuID] = struct{}{}
+		}
+	}
+	for _, menuID := range menuIDs {
+		if menuID <= 0 {
+			continue
+		}
+		if _, ok := scope[menuID]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func mapMenuRow(row *permissionrepo.MenuRow) *xadmin.PermissionMenuItem {
