@@ -100,6 +100,11 @@ body {
 
 :root[data-bg-apply='on'] {
   --xadmin-app-surface-bg: rgba(255, 255, 255, 0.32);
+  --xadmin-header-control-bg: rgba(255, 255, 255, 0.28);
+  --xadmin-header-control-hover-bg: rgba(255, 255, 255, 0.44);
+  --xadmin-header-control-border: rgba(22, 36, 71, 0.16);
+  --xadmin-header-control-text: #162447;
+  --xadmin-header-popup-bg: rgba(255, 255, 255, 0.76);
   --xadmin-sider-surface-bg: rgba(255, 255, 255, 0.16);
   --xadmin-sider-menu-hover-bg: rgba(255, 255, 255, 0.38);
   --xadmin-sider-menu-active-bg: rgba(255, 255, 255, 0.48);
@@ -125,6 +130,11 @@ body {
 
 :root[data-theme='dark'][data-bg-apply='on'] {
   --xadmin-app-surface-bg: rgba(20, 20, 22, 0.32);
+  --xadmin-header-control-bg: rgba(24, 24, 28, 0.36);
+  --xadmin-header-control-hover-bg: rgba(52, 52, 58, 0.54);
+  --xadmin-header-control-border: rgba(236, 236, 236, 0.2);
+  --xadmin-header-control-text: #ececec;
+  --xadmin-header-popup-bg: rgba(24, 24, 28, 0.8);
   --xadmin-sider-surface-bg: rgba(26, 26, 28, 0.16);
   --xadmin-sider-menu-hover-bg: rgba(255, 255, 255, 0.24);
   --xadmin-sider-menu-active-bg: rgba(255, 255, 255, 0.32);
@@ -221,6 +231,59 @@ body {
   border-bottom: 1px solid var(--color-border);
   padding-inline: var(--space-3);
   backdrop-filter: saturate(120%) blur(6px);
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-select .ant-select-selector,
+:root[data-bg-apply='on'] .admin-header-theme-toggle {
+  color: var(--xadmin-header-control-text) !important;
+  background: var(--xadmin-header-control-bg) !important;
+  border-color: var(--xadmin-header-control-border) !important;
+  backdrop-filter: saturate(120%) blur(8px);
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-select .ant-select-selection-item,
+:root[data-bg-apply='on'] .admin-header-locale-select .ant-select-arrow,
+:root[data-bg-apply='on'] .admin-header-theme-toggle .anticon {
+  color: var(--xadmin-header-control-text) !important;
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-select:not(.ant-select-disabled):hover .ant-select-selector,
+:root[data-bg-apply='on'] .admin-header-theme-toggle:not(:disabled):hover {
+  color: var(--xadmin-header-control-text) !important;
+  background: var(--xadmin-header-control-hover-bg) !important;
+  border-color: var(--xadmin-header-control-border) !important;
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-select.ant-select-focused .ant-select-selector,
+:root[data-bg-apply='on'] .admin-header-theme-toggle:focus-visible {
+  border-color: var(--color-brand) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 20%, transparent) !important;
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-select.ant-select-disabled .ant-select-selector,
+:root[data-bg-apply='on'] .admin-header-theme-toggle:disabled {
+  color: color-mix(in srgb, var(--xadmin-header-control-text) 48%, transparent) !important;
+  background: color-mix(in srgb, var(--xadmin-header-control-bg) 72%, transparent) !important;
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-popup {
+  color: var(--xadmin-header-control-text);
+  background: var(--xadmin-header-popup-bg) !important;
+  border: 1px solid var(--xadmin-header-control-border);
+  backdrop-filter: saturate(120%) blur(12px);
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-popup .ant-select-item {
+  color: var(--xadmin-header-control-text);
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-popup .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background: var(--xadmin-header-control-bg);
+}
+
+:root[data-bg-apply='on'] .admin-header-locale-popup .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  color: var(--xadmin-header-control-text);
+  background: var(--xadmin-header-control-hover-bg);
 }
 
 .admin-warm-tip {

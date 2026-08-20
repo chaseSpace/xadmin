@@ -778,6 +778,8 @@ export function AdminLayout() {
               ) : null}
             </div>
             <Select
+              className="admin-header-locale-select"
+              popupClassName="admin-header-locale-popup"
               value={locale}
               popupMatchSelectWidth={false}
               style={{ width: 112, height: 36 }}
@@ -790,6 +792,7 @@ export function AdminLayout() {
               ]}
             />
             <UiButton
+              className="admin-header-theme-toggle"
               icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
               onClick={toggleThemeWithFx}
               title={themeMode === 'dark' ? t('切换到日间模式') : t('切换到夜间模式')}
