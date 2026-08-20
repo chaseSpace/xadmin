@@ -439,7 +439,39 @@ export function OrganizationMembersPage() {
       const tempPassword = await resetOrganizationUserPassword(selected.uid)
       setPasswordOpen(false)
       if (tempPassword) {
-        void messageApi.success(t('重置密码成功，随机密码：{password}；该用户全部会话已下线', { password: tempPassword }))
+        const copyTempPassword = async () => {
+          try {
+            await copyText(tempPassword)
+            void messageApi.success(t('已复制'))
+          } catch {
+            void messageApi.error(t('复制失败'))
+          }
+        }
+        void messageApi.success({
+          content: (
+            <span>
+              {t('重置密码成功，随机密码：')}
+              <Tooltip title={t('点击复制')}>
+                <Typography.Link
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${t('点击复制')}：${tempPassword}`}
+                  onClick={() => void copyTempPassword()}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      void copyTempPassword()
+                    }
+                  }}
+                >
+                  {tempPassword} <CopyOutlined />
+                </Typography.Link>
+              </Tooltip>
+              {t('；该用户全部会话已下线')}
+            </span>
+          ),
+          duration: 8,
+        })
       } else {
         void messageApi.success(t('重置密码成功'))
       }

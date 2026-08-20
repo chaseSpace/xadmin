@@ -766,8 +766,8 @@ const enUsMessages: Record<string, string> = {
   '不能选择已停用岗位': 'Cannot select a disabled position',
   '新增用户成功': 'User created',
   '编辑用户成功': 'User updated',
-  '重置密码成功，随机密码：{password}；该用户全部会话已下线':
-    'Password reset succeeded. Temporary password: {password}; all user sessions were signed out.',
+  '重置密码成功，随机密码：': 'Password reset succeeded. Temporary password: ',
+  '；该用户全部会话已下线': '; all user sessions were signed out.',
   '重置密码成功': 'Password reset succeeded',
   '导入文件无有效数据': 'No valid data found in the import file',
   '未解析到可导入记录，请检查模板和枚举值':

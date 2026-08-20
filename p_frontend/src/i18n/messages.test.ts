@@ -23,6 +23,12 @@ describe('translateText', () => {
     expect(translateText('业务用户列表', 'en-US')).toBe('Business Users')
     expect(translateText('新增黑名单IP', 'en-US')).toBe('Add Blacklist IP')
     expect(translateText('批量启用', 'en-US')).toBe('Enable Selected')
+    expect(translateText('重置密码成功，随机密码：', 'en-US')).toBe(
+      'Password reset succeeded. Temporary password: ',
+    )
+    expect(translateText('；该用户全部会话已下线', 'en-US')).toBe(
+      '; all user sessions were signed out.',
+    )
   })
 
   it('translates the file timezone hint text', () => {
