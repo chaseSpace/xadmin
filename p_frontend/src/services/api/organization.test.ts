@@ -1,6 +1,15 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apiClient } from './client'
-import { getOrganizationUsers } from './organization'
+import {
+  assignOrganizationUserPosition,
+  getOrganizationUsers,
+  updateOrganizationPosition,
+  updateOrganizationPositionRoles,
+  updateOrganizationUserProfile,
+  updateOrganizationUserStatus,
+} from './organization'
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('getOrganizationUsers', () => {
   it('maps organization users payload to frontend model', async () => {
@@ -53,5 +62,65 @@ describe('getOrganizationUsers', () => {
       onlineStatus: 'online',
       activeSessionCount: 2,
     })
+  })
+})
+
+describe('organization privilege mutation payloads', () => {
+  it('keeps profile updates free of position and status fields', async () => {
+    const putSpy = vi.spyOn(apiClient, 'put').mockResolvedValueOnce({ data: { code: 200 } })
+
+    await updateOrganizationUserProfile(10002, {
+      displayName: '测试用户',
+      avatar: '',
+      email: 'user@example.com',
+      phone: '13800000000',
+    })
+
+    expect(putSpy).toHaveBeenCalledWith('/organization/users/10002/profile', {
+      display_name: '测试用户',
+      avatar: '',
+      email: 'user@example.com',
+      phone: '13800000000',
+    })
+  })
+
+  it('uses dedicated user position and status endpoints', async () => {
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { code: 200 } })
+
+    await assignOrganizationUserPosition(10002, { departmentId: 3, positionId: 8 })
+    await updateOrganizationUserStatus(10002, 0)
+
+    expect(postSpy).toHaveBeenNthCalledWith(1, '/organization/users/10002/position', {
+      department_id: 3,
+      position_id: 8,
+    })
+    expect(postSpy).toHaveBeenNthCalledWith(2, '/organization/users/10002/status', { status: 0 })
+  })
+
+  it('separates position metadata from role assignment', async () => {
+    const putSpy = vi.spyOn(apiClient, 'put').mockResolvedValueOnce({ data: { code: 200 } })
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValueOnce({ data: { code: 200 } })
+
+    await updateOrganizationPosition(7, {
+      name: '测试岗位',
+      code: 'POS-TEST',
+      departmentId: 3,
+      level: 'P5',
+      hc: 2,
+      staffed: 1,
+      status: 'enabled',
+    })
+    await updateOrganizationPositionRoles(7, [2, 3])
+
+    expect(putSpy).toHaveBeenCalledWith('/organization/positions/7', {
+      name: '测试岗位',
+      code: 'POS-TEST',
+      department_id: 3,
+      level: 'P5',
+      hc: 2,
+      staffed: 1,
+      status: 1,
+    })
+    expect(postSpy).toHaveBeenCalledWith('/organization/positions/7/roles', { role_ids: [2, 3] })
   })
 })

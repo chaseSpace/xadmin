@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "/api"
+      "url": "/v1"
     }
   ],
   "paths": {
@@ -32,6 +32,123 @@
                   "$ref": "#/components/schemas/LoginResponse"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/account/me/profile": {
+      "get": {
+        "operationId": "getMyProfile",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthMeProfileResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organization/users/{uid}/profile": {
+      "put": {
+        "operationId": "updateOrganizationUserProfile",
+        "parameters": [{ "$ref": "#/components/parameters/UserUID" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateOrganizationUserProfileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ActionResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/organization/users/{uid}/position": {
+      "post": {
+        "operationId": "assignOrganizationUserPosition",
+        "parameters": [{ "$ref": "#/components/parameters/UserUID" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AssignOrganizationUserPositionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ActionResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/organization/users/{uid}/status": {
+      "post": {
+        "operationId": "updateOrganizationUserStatus",
+        "parameters": [{ "$ref": "#/components/parameters/UserUID" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateOrganizationUserStatusRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ActionResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/organization/users/{uid}/reset-password": {
+      "post": {
+        "operationId": "resetOrganizationUserPassword",
+        "parameters": [{ "$ref": "#/components/parameters/UserUID" }],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ActionResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/organization/positions/{id}/roles": {
+      "post": {
+        "operationId": "updateOrganizationPositionRoles",
+        "parameters": [{ "$ref": "#/components/parameters/PositionID" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateOrganizationPositionRolesRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ActionResponse" } }
             }
           }
         }
@@ -164,7 +281,99 @@
     }
   },
   "components": {
+    "parameters": {
+      "UserUID": {
+        "name": "uid",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer", "format": "int32", "minimum": 1 }
+      },
+      "PositionID": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer", "format": "int64", "minimum": 1 }
+      }
+    },
     "schemas": {
+      "AuthMeProfileResponse": {
+        "type": "object",
+        "required": ["code", "message", "data"],
+        "properties": {
+          "code": { "type": "integer" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "object",
+            "required": ["uid", "username", "permission_keys", "is_super_admin"],
+            "properties": {
+              "uid": { "type": "integer", "format": "int32" },
+              "username": { "type": "string" },
+              "display_name": { "type": "string" },
+              "avatar": { "type": "string" },
+              "email": { "type": "string" },
+              "phone": { "type": "string" },
+              "menu_routes": { "type": "array", "items": { "type": "string" } },
+              "permission_keys": { "type": "array", "items": { "type": "string" } },
+              "is_super_admin": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "UpdateOrganizationUserProfileRequest": {
+        "type": "object",
+        "required": ["display_name"],
+        "additionalProperties": false,
+        "properties": {
+          "display_name": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "avatar": { "type": "string", "maxLength": 255 },
+          "email": { "type": "string", "maxLength": 128 },
+          "phone": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "AssignOrganizationUserPositionRequest": {
+        "type": "object",
+        "required": ["department_id", "position_id"],
+        "additionalProperties": false,
+        "properties": {
+          "department_id": { "type": "integer", "format": "int64", "minimum": 0 },
+          "position_id": { "type": "integer", "format": "int64", "minimum": 0 }
+        }
+      },
+      "UpdateOrganizationUserStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "additionalProperties": false,
+        "properties": { "status": { "type": "integer", "minimum": 0, "maximum": 2 } }
+      },
+      "UpdateOrganizationPositionRolesRequest": {
+        "type": "object",
+        "required": ["role_ids"],
+        "additionalProperties": false,
+        "properties": {
+          "role_ids": {
+            "type": "array",
+            "maxItems": 100,
+            "items": { "type": "integer", "format": "int64", "minimum": 1 }
+          }
+        }
+      },
+      "ActionResponse": {
+        "type": "object",
+        "required": ["code", "message", "data"],
+        "properties": {
+          "code": { "type": "integer" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "object",
+            "required": ["success", "action"],
+            "properties": {
+              "success": { "type": "boolean" },
+              "action": { "type": "string" },
+              "temp_password": { "type": "string" }
+            }
+          }
+        }
+      },
       "LoginRequest": {
         "type": "object",
         "required": ["username", "password"],

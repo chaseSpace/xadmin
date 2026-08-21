@@ -12,6 +12,8 @@ export type AuthUserProfile = {
   sessionId: string
   menuRoutes: string[]
   menuItems: CurrentUserMenuItem[]
+  permissionKeys: string[]
+  isSuperAdmin: boolean
   warmTip: CurrentUserWarmTip | null
   menuLoaded: boolean
   menuLoadError: string
@@ -23,16 +25,26 @@ function getInitialUserProfile(): AuthUserProfile | null {
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw) as Partial<AuthUserProfile>
-    if (!parsed || typeof parsed.uid !== 'number' || typeof parsed.username !== 'string') return null
+    if (!parsed || typeof parsed.uid !== 'number' || typeof parsed.username !== 'string')
+      return null
     return {
       uid: parsed.uid,
       username: parsed.username,
       displayName: typeof parsed.displayName === 'string' ? parsed.displayName : '',
       avatar: typeof parsed.avatar === 'string' ? parsed.avatar : '',
       sessionId: typeof parsed.sessionId === 'string' ? parsed.sessionId : '',
-      menuRoutes: Array.isArray(parsed.menuRoutes) ? parsed.menuRoutes.filter((item) => typeof item === 'string') : [],
+      menuRoutes: Array.isArray(parsed.menuRoutes)
+        ? parsed.menuRoutes.filter((item) => typeof item === 'string')
+        : [],
       menuItems: Array.isArray(parsed.menuItems) ? parsed.menuItems : [],
-      warmTip: parsed.warmTip && typeof parsed.warmTip === 'object' ? parsed.warmTip as CurrentUserWarmTip : null,
+      permissionKeys: Array.isArray(parsed.permissionKeys)
+        ? parsed.permissionKeys.filter((item) => typeof item === 'string')
+        : [],
+      isSuperAdmin: Boolean(parsed.isSuperAdmin),
+      warmTip:
+        parsed.warmTip && typeof parsed.warmTip === 'object'
+          ? (parsed.warmTip as CurrentUserWarmTip)
+          : null,
       menuLoaded: Boolean(parsed.menuLoaded),
       menuLoadError: typeof parsed.menuLoadError === 'string' ? parsed.menuLoadError : '',
     }
@@ -55,7 +67,21 @@ type AuthState = {
   currentUser: AuthUserProfile | null
   login: (session: { token: string; user: AuthUserProfile }) => void
   updateCurrentUserProfile: (
-    profile: Partial<Pick<AuthUserProfile, 'username' | 'displayName' | 'avatar' | 'menuRoutes' | 'menuItems' | 'warmTip' | 'menuLoaded' | 'menuLoadError'>>,
+    profile: Partial<
+      Pick<
+        AuthUserProfile,
+        | 'username'
+        | 'displayName'
+        | 'avatar'
+        | 'menuRoutes'
+        | 'menuItems'
+        | 'permissionKeys'
+        | 'isSuperAdmin'
+        | 'warmTip'
+        | 'menuLoaded'
+        | 'menuLoadError'
+      >
+    >,
   ) => void
   logout: () => void
   syncFromStorage: () => void
@@ -81,6 +107,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         avatar: profile.avatar ?? state.currentUser.avatar,
         menuRoutes: profile.menuRoutes ?? state.currentUser.menuRoutes,
         menuItems: profile.menuItems ?? state.currentUser.menuItems,
+        permissionKeys: profile.permissionKeys ?? state.currentUser.permissionKeys,
+        isSuperAdmin: profile.isSuperAdmin ?? state.currentUser.isSuperAdmin,
         warmTip: profile.warmTip ?? state.currentUser.warmTip,
         menuLoaded: profile.menuLoaded ?? state.currentUser.menuLoaded,
         menuLoadError: profile.menuLoadError ?? state.currentUser.menuLoadError,

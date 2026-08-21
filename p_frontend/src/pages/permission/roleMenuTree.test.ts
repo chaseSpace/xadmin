@@ -7,19 +7,37 @@ const menuTree: PermissionMenuTreeNode[] = [
     id: 1,
     parentId: 0,
     name: '系统管理',
+    permissionKey: 'system.root',
+    isDelegable: true,
     children: [
       {
         id: 2,
         parentId: 1,
         name: '用户管理',
+        permissionKey: 'system.users.view',
+        isDelegable: true,
         children: [
-          { id: 3, parentId: 2, name: '查看用户', children: [] },
-          { id: 4, parentId: 2, name: '编辑用户', children: [] },
+          {
+            id: 3,
+            parentId: 2,
+            name: '查看用户',
+            permissionKey: 'system.users.view',
+            isDelegable: true,
+            children: [],
+          },
+          {
+            id: 4,
+            parentId: 2,
+            name: '编辑用户',
+            permissionKey: 'system.users.edit',
+            isDelegable: false,
+            children: [],
+          },
         ],
       },
     ],
   },
-  { id: 5, parentId: 0, name: '首页', children: [] },
+  { id: 5, parentId: 0, name: '首页', permissionKey: 'home.view', isDelegable: true, children: [] },
 ]
 
 describe('applyRoleMenuCheckChange', () => {

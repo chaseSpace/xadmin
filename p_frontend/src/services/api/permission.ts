@@ -19,6 +19,7 @@ export type PermissionMenu = {
   deleted: boolean
   deletedAt: string
   updatedAt: string
+  isDelegable: boolean
 }
 
 export type PermissionMenuTreeNode = {
@@ -26,6 +27,8 @@ export type PermissionMenuTreeNode = {
   parentId: number
   name: string
   children: PermissionMenuTreeNode[]
+  permissionKey: string
+  isDelegable: boolean
 }
 
 type PermissionMenuTreeApiNode = {
@@ -33,6 +36,8 @@ type PermissionMenuTreeApiNode = {
   parent_id: number
   name: string
   children?: PermissionMenuTreeApiNode[]
+  permission_key?: string
+  is_delegable?: boolean
 }
 
 export type PermissionMenusFilters = {
@@ -58,6 +63,7 @@ export type CreatePermissionMenuPayload = {
   menuType: PermissionMenuType
   permissionKey: string
   sort: number
+  isDelegable: boolean
 }
 
 export type UpdatePermissionMenuPayload = CreatePermissionMenuPayload
@@ -92,8 +98,10 @@ function mapMenu(item: {
   deleted?: boolean
   deleted_at?: string
   updated_at: string
+  is_delegable?: boolean
 }): PermissionMenu {
-  const menuType: PermissionMenuType = item.menu_type === 'directory' ? 'directory' : item.menu_type === 'button' ? 'button' : 'menu'
+  const menuType: PermissionMenuType =
+    item.menu_type === 'directory' ? 'directory' : item.menu_type === 'button' ? 'button' : 'menu'
   const status: PermissionStatus = item.status === 'disabled' ? 'disabled' : 'enabled'
   return {
     id: item.id,
@@ -108,17 +116,23 @@ function mapMenu(item: {
     deleted: Boolean(item.deleted),
     deletedAt: String(item.deleted_at || ''),
     updatedAt: item.updated_at,
+    isDelegable: Boolean(item.is_delegable),
   }
 }
 
 export async function getPermissionMenuTree(): Promise<PermissionMenuTreeNode[]> {
-  const response = await apiClient.get<PermissionApiResponse<{ items: PermissionMenuTreeApiNode[] }>>('/permission/menus/tree')
+  const response =
+    await apiClient.get<PermissionApiResponse<{ items: PermissionMenuTreeApiNode[] }>>(
+      '/permission/menus/tree',
+    )
   const walk = (items: PermissionMenuTreeApiNode[]): PermissionMenuTreeNode[] =>
     items.map((item) => ({
       id: item.id,
       parentId: item.parent_id,
       name: item.name,
       children: walk(item.children ?? []),
+      permissionKey: String(item.permission_key || ''),
+      isDelegable: Boolean(item.is_delegable),
     }))
   return walk(response.data.data.items ?? [])
 }
@@ -130,24 +144,27 @@ export async function getPermissionMenus(
   orderType?: PermissionOrderType,
   filters?: PermissionMenusFilters,
 ): Promise<PermissionMenusPage> {
-  const response = await apiClient.get<PermissionApiResponse<{
-    total: number | string
-    page?: { pn: number; ps: number }
-    items: Array<{
-      id: number
-      parent_id: number
-      name: string
-      route_path: string
-      component_path: string
-      menu_type: string
-      permission_key: string
-      sort: number
-      status: string
-      deleted?: boolean
-      deleted_at?: string
-      updated_at: string
+  const response = await apiClient.get<
+    PermissionApiResponse<{
+      total: number | string
+      page?: { pn: number; ps: number }
+      items: Array<{
+        id: number
+        parent_id: number
+        name: string
+        route_path: string
+        component_path: string
+        menu_type: string
+        permission_key: string
+        sort: number
+        status: string
+        deleted?: boolean
+        deleted_at?: string
+        updated_at: string
+        is_delegable?: boolean
+      }>
     }>
-  }>>('/permission/menus', {
+  >('/permission/menus', {
     params: {
       page_no: pageNo,
       page_size: pageSize,
@@ -169,59 +186,81 @@ export async function getPermissionMenus(
 }
 
 export async function getPermissionMenu(id: number): Promise<PermissionMenu> {
-  const response = await apiClient.get<PermissionApiResponse<{
-    id: number
-    parent_id: number
-    name: string
-    route_path: string
-    component_path: string
-    menu_type: string
-    permission_key: string
-    sort: number
-    status: string
-    deleted?: boolean
-    deleted_at?: string
-    updated_at: string
-  }>>(`/permission/menus/${id}`)
+  const response = await apiClient.get<
+    PermissionApiResponse<{
+      id: number
+      parent_id: number
+      name: string
+      route_path: string
+      component_path: string
+      menu_type: string
+      permission_key: string
+      sort: number
+      status: string
+      deleted?: boolean
+      deleted_at?: string
+      updated_at: string
+      is_delegable?: boolean
+    }>
+  >(`/permission/menus/${id}`)
   return mapMenu(response.data.data)
 }
 
 export async function createPermissionMenu(payload: CreatePermissionMenuPayload): Promise<void> {
-  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>('/permission/menus', {
-    parent_id: payload.parentId,
-    name: payload.name,
-    route_path: payload.routePath,
-    component_path: payload.componentPath,
-    menu_type: mapMenuType(payload.menuType),
-    permission_key: payload.permissionKey,
-    sort: payload.sort,
-  })
+  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>(
+    '/permission/menus',
+    {
+      parent_id: payload.parentId,
+      name: payload.name,
+      route_path: payload.routePath,
+      component_path: payload.componentPath,
+      menu_type: mapMenuType(payload.menuType),
+      permission_key: payload.permissionKey,
+      sort: payload.sort,
+      is_delegable: payload.isDelegable,
+    },
+  )
 }
 
-export async function updatePermissionMenu(id: number, payload: UpdatePermissionMenuPayload): Promise<void> {
-  await apiClient.put<PermissionApiResponse<{ success: boolean; action: string }>>(`/permission/menus/${id}`, {
-    parent_id: payload.parentId,
-    name: payload.name,
-    route_path: payload.routePath,
-    component_path: payload.componentPath,
-    menu_type: mapMenuType(payload.menuType),
-    permission_key: payload.permissionKey,
-    sort: payload.sort,
-  })
+export async function updatePermissionMenu(
+  id: number,
+  payload: UpdatePermissionMenuPayload,
+): Promise<void> {
+  await apiClient.put<PermissionApiResponse<{ success: boolean; action: string }>>(
+    `/permission/menus/${id}`,
+    {
+      parent_id: payload.parentId,
+      name: payload.name,
+      route_path: payload.routePath,
+      component_path: payload.componentPath,
+      menu_type: mapMenuType(payload.menuType),
+      permission_key: payload.permissionKey,
+      sort: payload.sort,
+      is_delegable: payload.isDelegable,
+    },
+  )
 }
 
 export async function updatePermissionMenuStatus(id: number, enabled: boolean): Promise<void> {
-  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>(`/permission/menus/${id}/status`, {
-    enabled,
-  })
+  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>(
+    `/permission/menus/${id}/status`,
+    {
+      enabled,
+    },
+  )
 }
 
 export async function deletePermissionMenu(id: number): Promise<void> {
-  await apiClient.delete<PermissionApiResponse<{ success: boolean; action: string }>>(`/permission/menus/${id}`)
+  await apiClient.delete<PermissionApiResponse<{ success: boolean; action: string }>>(
+    `/permission/menus/${id}`,
+  )
 }
 
 export async function syncPermissionMenus(): Promise<void> {
-  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>('/permission/menus/sync', {})
+  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>(
+    '/permission/menus/sync',
+    {},
+  )
 }
 
 export type PermissionRoleType = 'system' | 'custom'
@@ -232,6 +271,10 @@ export type PermissionRole = {
   roleType: PermissionRoleType
   users: number
   updatedAt: string
+  roleCode: string
+  isProtected: boolean
+  canManage: boolean
+  canAssignMenus: boolean
 }
 
 export type PermissionRolesFilters = {
@@ -259,6 +302,10 @@ function mapRole(item: {
   role_type: string
   users: number | string
   updated_at: string
+  role_code?: string
+  is_protected?: boolean
+  can_manage?: boolean
+  can_assign_menus?: boolean
 }): PermissionRole {
   const id = Number(item.id)
   const users = Number(item.users)
@@ -268,6 +315,10 @@ function mapRole(item: {
     roleType: item.role_type === 'system' ? 'system' : 'custom',
     users: Number.isFinite(users) ? users : 0,
     updatedAt: item.updated_at,
+    roleCode: String(item.role_code || ''),
+    isProtected: Boolean(item.is_protected),
+    canManage: Boolean(item.can_manage),
+    canAssignMenus: Boolean(item.can_assign_menus),
   }
 }
 
@@ -278,17 +329,23 @@ export async function getPermissionRoles(
   orderType?: PermissionOrderType,
   filters?: PermissionRolesFilters,
 ): Promise<PermissionRolesPage> {
-  const response = await apiClient.get<PermissionApiResponse<{
-    total: number | string
-    page?: { pn: number; ps: number }
-    items: Array<{
-      id: number
-      role_name: string
-      role_type: string
-      users: number
-      updated_at: string
+  const response = await apiClient.get<
+    PermissionApiResponse<{
+      total: number | string
+      page?: { pn: number; ps: number }
+      items: Array<{
+        id: number
+        role_name: string
+        role_type: string
+        users: number
+        updated_at: string
+        role_code?: string
+        is_protected?: boolean
+        can_manage?: boolean
+        can_assign_menus?: boolean
+      }>
     }>
-  }>>('/permission/roles', {
+  >('/permission/roles', {
     params: {
       page_no: pageNo,
       page_size: pageSize,
@@ -307,42 +364,64 @@ export async function getPermissionRoles(
 }
 
 export async function getPermissionRole(id: number): Promise<PermissionRole> {
-  const response = await apiClient.get<PermissionApiResponse<{
-    id: number
-    role_name: string
-    role_type: string
-    users: number
-    updated_at: string
-  }>>(`/permission/roles/${id}`)
+  const response = await apiClient.get<
+    PermissionApiResponse<{
+      id: number
+      role_name: string
+      role_type: string
+      users: number
+      updated_at: string
+      role_code?: string
+      is_protected?: boolean
+      can_manage?: boolean
+      can_assign_menus?: boolean
+    }>
+  >(`/permission/roles/${id}`)
   return mapRole(response.data.data)
 }
 
 export async function createPermissionRole(payload: CreatePermissionRolePayload): Promise<void> {
-  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>('/permission/roles', {
-    role_name: payload.roleName,
-    role_type: mapRoleType(payload.roleType),
-  })
+  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>(
+    '/permission/roles',
+    {
+      role_name: payload.roleName,
+      role_type: mapRoleType(payload.roleType),
+    },
+  )
 }
 
-export async function updatePermissionRole(id: number, payload: UpdatePermissionRolePayload): Promise<void> {
-  await apiClient.put<PermissionApiResponse<{ success: boolean; action: string }>>(`/permission/roles/${id}`, {
-    role_name: payload.roleName,
-    role_type: mapRoleType(payload.roleType),
-  })
+export async function updatePermissionRole(
+  id: number,
+  payload: UpdatePermissionRolePayload,
+): Promise<void> {
+  await apiClient.put<PermissionApiResponse<{ success: boolean; action: string }>>(
+    `/permission/roles/${id}`,
+    {
+      role_name: payload.roleName,
+      role_type: mapRoleType(payload.roleType),
+    },
+  )
 }
 
 export async function deletePermissionRole(id: number): Promise<void> {
-  await apiClient.delete<PermissionApiResponse<{ success: boolean; action: string }>>(`/permission/roles/${id}`)
+  await apiClient.delete<PermissionApiResponse<{ success: boolean; action: string }>>(
+    `/permission/roles/${id}`,
+  )
 }
 
 export async function getPermissionRoleMenus(roleId: number): Promise<number[]> {
-  const response = await apiClient.get<PermissionApiResponse<{ menu_ids: number[] }>>(`/permission/roles/${roleId}/menus`)
+  const response = await apiClient.get<PermissionApiResponse<{ menu_ids: number[] }>>(
+    `/permission/roles/${roleId}/menus`,
+  )
   return response.data.data.menu_ids ?? []
 }
 
 export async function updatePermissionRoleMenus(roleId: number, menuIds: number[]): Promise<void> {
-  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>(`/permission/roles/${roleId}/menus`, {
-    role_id: roleId,
-    menu_ids: menuIds,
-  })
+  await apiClient.post<PermissionApiResponse<{ success: boolean; action: string }>>(
+    `/permission/roles/${roleId}/menus`,
+    {
+      role_id: roleId,
+      menu_ids: menuIds,
+    },
+  )
 }

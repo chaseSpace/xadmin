@@ -1,5 +1,18 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Card, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Tree, message } from 'antd'
+import {
+  Card,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tree,
+  Typography,
+  message,
+} from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import type { TablePaginationConfig } from 'antd'
 import type { SorterResult } from 'antd/es/table/interface'
@@ -8,6 +21,8 @@ import { UiButton } from '../../components/ui'
 import { useI18n } from '../../i18n/messages'
 import { useUiSettingsStore } from '../../store/uiSettings'
 import { formatDateTime } from '../../utils/timezone'
+import { useAuthStore } from '../../store/auth'
+import { hasPermission, permissionKeys } from '../../utils/permissions'
 import {
   createPermissionMenu,
   deletePermissionMenu,
@@ -36,6 +51,7 @@ type MenuFormValues = {
   menuType: 'directory' | 'menu' | 'button'
   permissionKey: string
   sort: number
+  isDelegable: boolean
 }
 
 function menuTreeToAntTree(nodes: PermissionMenuTreeNode[]): DataNode[] {
@@ -76,11 +92,17 @@ export function PermissionPoliciesPage() {
   const [modalApi, modalContextHolder] = Modal.useModal()
   const [filterForm] = Form.useForm<FilterFormValues>()
   const [menuForm] = Form.useForm<MenuFormValues>()
+  const currentUser = useAuthStore((state) => state.currentUser)
+  const canManageSchema =
+    currentUser?.isSuperAdmin === true &&
+    hasPermission(currentUser, permissionKeys.menusManageSchema)
   const [queryTrigger, setQueryTrigger] = useState(0)
   const [filters, setFilters] = useState<PermissionMenusFilters>({ deleted: 'no' })
   const [pageNo, setPageNo] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [orderField, setOrderField] = useState<'id' | 'name' | 'menu_type' | 'sort' | 'updated_at' | undefined>()
+  const [orderField, setOrderField] = useState<
+    'id' | 'name' | 'menu_type' | 'sort' | 'updated_at' | undefined
+  >()
   const [orderType, setOrderType] = useState<'asc' | 'desc' | undefined>()
   const [selectedTreeId, setSelectedTreeId] = useState<number>(0)
   const [expandedTreeKeys, setExpandedTreeKeys] = useState<string[]>([])
@@ -96,7 +118,16 @@ export function PermissionPoliciesPage() {
   const treeData = useMemo(() => menuTreeToAntTree(treeQuery.data ?? []), [treeQuery.data])
 
   const menusQuery = useQuery({
-    queryKey: ['permission-menus', pageNo, pageSize, orderField, orderType, filters, selectedFilterTreeId, queryTrigger],
+    queryKey: [
+      'permission-menus',
+      pageNo,
+      pageSize,
+      orderField,
+      orderType,
+      filters,
+      selectedFilterTreeId,
+      queryTrigger,
+    ],
     queryFn: () =>
       getPermissionMenus(pageNo, pageSize, orderField, orderType, {
         ...filters,
@@ -105,7 +136,11 @@ export function PermissionPoliciesPage() {
   })
 
   const menuOptions = useMemo(
-    () => flattenTree(treeQuery.data ?? []).map((item) => ({ value: item.id, label: item.id === 0 ? t('根节点') : item.name })),
+    () =>
+      flattenTree(treeQuery.data ?? []).map((item) => ({
+        value: item.id,
+        label: item.id === 0 ? t('根节点') : item.name,
+      })),
     [treeQuery.data, t],
   )
   const openCreateModal = (menuType: 'directory' | 'menu' | 'button') => {
@@ -119,6 +154,7 @@ export function PermissionPoliciesPage() {
       menuType,
       permissionKey: '',
       sort: 0,
+      isDelegable: false,
     })
     setEditorOpen(true)
   }
@@ -135,6 +171,7 @@ export function PermissionPoliciesPage() {
       menuType: detail.menuType,
       permissionKey: detail.permissionKey,
       sort: detail.sort,
+      isDelegable: detail.isDelegable,
     })
     setEditorOpen(true)
   }
@@ -149,6 +186,7 @@ export function PermissionPoliciesPage() {
         menuType: values.menuType,
         permissionKey: values.permissionKey.trim(),
         sort: values.sort,
+        isDelegable: values.isDelegable,
       }
       if (editorMode === 'create') {
         await createPermissionMenu(payload)
@@ -197,15 +235,28 @@ export function PermissionPoliciesPage() {
       {contextHolder}
       {modalContextHolder}
 
-      <Space direction="vertical" size={16} className="full-width permission-menu-page table-scroll-page">
+      <Space
+        direction="vertical"
+        size={16}
+        className="full-width permission-menu-page table-scroll-page"
+      >
         <Space wrap>
-          <UiButton type="primary" onClick={() => openCreateModal('menu')}>
-            {t('新增菜单')}
-          </UiButton>
-          <UiButton onClick={() => openCreateModal('button')}>{t('新增按钮权限')}</UiButton>
-          <UiButton loading={syncMutation.isPending} onClick={() => void syncMutation.mutateAsync()}>
-            {t('同步前端路由')}
-          </UiButton>
+          {canManageSchema ? (
+            <UiButton type="primary" onClick={() => openCreateModal('menu')}>
+              {t('新增菜单')}
+            </UiButton>
+          ) : null}
+          {canManageSchema ? (
+            <UiButton onClick={() => openCreateModal('button')}>{t('新增按钮权限')}</UiButton>
+          ) : null}
+          {canManageSchema ? (
+            <UiButton
+              loading={syncMutation.isPending}
+              onClick={() => void syncMutation.mutateAsync()}
+            >
+              {t('同步前端路由')}
+            </UiButton>
+          ) : null}
         </Space>
 
         <Card>
@@ -222,7 +273,11 @@ export function PermissionPoliciesPage() {
             }}
           >
             <Form.Item label={t('关键词')} name="keyword">
-              <Input placeholder={t('菜单名称/权限标识')} allowClear onPressEnter={() => filterForm.submit()} />
+              <Input
+                placeholder={t('菜单名称/权限标识')}
+                allowClear
+                onPressEnter={() => filterForm.submit()}
+              />
             </Form.Item>
             <Form.Item label={t('菜单类型')} name="menuType">
               <Select
@@ -287,7 +342,10 @@ export function PermissionPoliciesPage() {
             </Card>
           </div>
           <div className="permission-menu-list-column">
-            <Card title={t('菜单权限列表')} className="permission-menu-list-card compact-table-card system-table-card">
+            <Card
+              title={t('菜单权限列表')}
+              className="permission-menu-list-card compact-table-card system-table-card"
+            >
               <Table<PermissionMenu>
                 rowKey="id"
                 loading={menusQuery.isLoading || menusQuery.isFetching}
@@ -339,8 +397,28 @@ export function PermissionPoliciesPage() {
                   { title: t('菜单名称'), dataIndex: 'name', sorter: true },
                   { title: t('路由Path'), dataIndex: 'routePath', width: 220, ellipsis: true },
                   { title: t('组件Path'), dataIndex: 'componentPath', width: 260, ellipsis: true },
-                  { title: t('菜单类型'), dataIndex: 'menuType', sorter: true, render: (menuType: PermissionMenu['menuType']) => menuType === 'directory' ? <Tag>{t('目录')}</Tag> : menuType === 'menu' ? <Tag color="blue">{t('菜单')}</Tag> : <Tag color="orange">{t('按钮')}</Tag> },
+                  {
+                    title: t('菜单类型'),
+                    dataIndex: 'menuType',
+                    sorter: true,
+                    render: (menuType: PermissionMenu['menuType']) =>
+                      menuType === 'directory' ? (
+                        <Tag>{t('目录')}</Tag>
+                      ) : menuType === 'menu' ? (
+                        <Tag color="blue">{t('菜单')}</Tag>
+                      ) : (
+                        <Tag color="orange">{t('按钮')}</Tag>
+                      ),
+                  },
                   { title: t('权限标识'), dataIndex: 'permissionKey', width: 280, ellipsis: true },
+                  {
+                    title: t('可委派'),
+                    dataIndex: 'isDelegable',
+                    width: 100,
+                    render: (value: boolean) => (
+                      <Tag color={value ? 'green' : 'default'}>{value ? t('是') : t('否')}</Tag>
+                    ),
+                  },
                   { title: t('排序'), dataIndex: 'sort', sorter: true },
                   {
                     title: t('是否删除'),
@@ -354,7 +432,8 @@ export function PermissionPoliciesPage() {
                     title: t('删除时间'),
                     dataIndex: 'deletedAt',
                     width: 170,
-                    render: (value: string) => (value ? formatDateTime(value, systemTimezone) : '-'),
+                    render: (value: string) =>
+                      value ? formatDateTime(value, systemTimezone) : '-',
                   },
                   {
                     title: t('更新时间'),
@@ -368,31 +447,36 @@ export function PermissionPoliciesPage() {
                     fixed: 'right',
                     render: (_, row) => (
                       <Space size={0}>
-                        {!row.deleted ? (
+                        {canManageSchema && !row.deleted ? (
                           <UiButton type="link" onClick={() => void openEditModal(row)}>
                             {t('编辑')}
                           </UiButton>
                         ) : null}
-                        <UiButton
-                          type="link"
-                          danger
-                          onClick={() => {
-                            void modalApi.confirm({
-                              title: row.deleted
-                                ? t('确认彻底删除菜单 {name}', { name: row.name })
-                                : t('确认删除菜单 {name}', { name: row.name }),
-                              content: row.deleted
-                                ? t('彻底删除不可恢复，且只能删除已删除超过1小时的菜单。')
-                                : t('如果存在子菜单，需先删除子菜单。'),
-                              okButtonProps: { danger: true },
-                              onOk: async () => {
-                                await deleteMutation.mutateAsync(row.id)
-                              },
-                            })
-                          }}
-                        >
-                          {row.deleted ? t('彻底删除') : t('删除')}
-                        </UiButton>
+                        {canManageSchema ? (
+                          <UiButton
+                            type="link"
+                            danger
+                            onClick={() => {
+                              void modalApi.confirm({
+                                title: row.deleted
+                                  ? t('确认彻底删除菜单 {name}', { name: row.name })
+                                  : t('确认删除菜单 {name}', { name: row.name }),
+                                content: row.deleted
+                                  ? t('彻底删除不可恢复，且只能删除已删除超过1小时的菜单。')
+                                  : t('如果存在子菜单，需先删除子菜单。'),
+                                okButtonProps: { danger: true },
+                                onOk: async () => {
+                                  await deleteMutation.mutateAsync(row.id)
+                                },
+                              })
+                            }}
+                          >
+                            {row.deleted ? t('彻底删除') : t('删除')}
+                          </UiButton>
+                        ) : null}
+                        {!canManageSchema ? (
+                          <Typography.Text type="secondary">{t('只读')}</Typography.Text>
+                        ) : null}
                       </Space>
                     ),
                   },
@@ -410,14 +494,30 @@ export function PermissionPoliciesPage() {
         onOk={() => menuForm.submit()}
         confirmLoading={saveMutation.isPending}
       >
-        <Form form={menuForm} layout="vertical" onFinish={(values) => void saveMutation.mutateAsync(values)}>
-          <Form.Item label={t('父级菜单')} name="parentId" rules={[{ required: true, message: t('请选择父级菜单') }]}>
+        <Form
+          form={menuForm}
+          layout="vertical"
+          onFinish={(values) => void saveMutation.mutateAsync(values)}
+        >
+          <Form.Item
+            label={t('父级菜单')}
+            name="parentId"
+            rules={[{ required: true, message: t('请选择父级菜单') }]}
+          >
             <Select options={menuOptions} showSearch optionFilterProp="label" />
           </Form.Item>
-          <Form.Item label={t('菜单名称')} name="name" rules={[{ required: true, message: t('请输入菜单名称') }]}>
+          <Form.Item
+            label={t('菜单名称')}
+            name="name"
+            rules={[{ required: true, message: t('请输入菜单名称') }]}
+          >
             <Input maxLength={64} />
           </Form.Item>
-          <Form.Item label={t('菜单类型')} name="menuType" rules={[{ required: true, message: t('请选择菜单类型') }]}>
+          <Form.Item
+            label={t('菜单类型')}
+            name="menuType"
+            rules={[{ required: true, message: t('请选择菜单类型') }]}
+          >
             <Select
               options={[
                 { value: 'directory', label: t('目录') },
@@ -435,8 +535,20 @@ export function PermissionPoliciesPage() {
           <Form.Item label={t('权限标识')} name="permissionKey">
             <Input maxLength={128} />
           </Form.Item>
-          <Form.Item label={t('排序')} name="sort" rules={[{ required: true, message: t('请输入排序值') }]}>
+          <Form.Item
+            label={t('排序')}
+            name="sort"
+            rules={[{ required: true, message: t('请输入排序值') }]}
+          >
             <InputNumber min={0} max={100000} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label={t('允许委派')} name="isDelegable" rules={[{ required: true }]}>
+            <Select
+              options={[
+                { value: true, label: t('是') },
+                { value: false, label: t('否') },
+              ]}
+            />
           </Form.Item>
         </Form>
       </Modal>

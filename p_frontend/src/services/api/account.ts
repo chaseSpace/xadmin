@@ -52,7 +52,10 @@ export async function updatePersonalSettings(
   if (typeof globalBackgroundApplyEnabled === 'boolean') {
     payload.global_background_apply_enabled = globalBackgroundApplyEnabled
   }
-  const response = await apiClient.post<PersonalSettingsApiResponse>('/account/me/settings', payload)
+  const response = await apiClient.post<PersonalSettingsApiResponse>(
+    '/account/me/settings',
+    payload,
+  )
   return {
     limitSingleLogin: Boolean(response.data.data.limit_single_login),
     backgroundImageUrl: String(response.data.data.background_image_url || ''),
@@ -81,6 +84,8 @@ type MeProfileApiResponse = {
     menu_routes?: string[]
     menu_items?: CurrentUserMenuApiItem[]
     warm_tip?: CurrentUserWarmTipApiItem
+    permission_keys?: string[]
+    is_super_admin?: boolean
   }
 }
 
@@ -123,6 +128,8 @@ export type CurrentUserProfile = {
   menuRoutes: string[]
   menuItems: CurrentUserMenuItem[]
   warmTip: CurrentUserWarmTip | null
+  permissionKeys: string[]
+  isSuperAdmin: boolean
 }
 
 export type CurrentUserWarmTip = {
@@ -132,7 +139,9 @@ export type CurrentUserWarmTip = {
   contentEn: string
 }
 
-function mapCurrentUserWarmTip(item: CurrentUserWarmTipApiItem | undefined): CurrentUserWarmTip | null {
+function mapCurrentUserWarmTip(
+  item: CurrentUserWarmTipApiItem | undefined,
+): CurrentUserWarmTip | null {
   if (!item || typeof item !== 'object') {
     return null
   }
@@ -144,7 +153,9 @@ function mapCurrentUserWarmTip(item: CurrentUserWarmTipApiItem | undefined): Cur
   }
 }
 
-function mapCurrentUserMenuItems(items: CurrentUserMenuApiItem[] | undefined): CurrentUserMenuItem[] {
+function mapCurrentUserMenuItems(
+  items: CurrentUserMenuApiItem[] | undefined,
+): CurrentUserMenuItem[] {
   if (!Array.isArray(items)) {
     return []
   }
@@ -170,10 +181,16 @@ export async function getMyProfile(): Promise<CurrentUserProfile> {
     email: response.data.data.email,
     phone: response.data.data.phone,
     menuRoutes: Array.isArray(response.data.data.menu_routes)
-      ? response.data.data.menu_routes.filter((item) => typeof item === 'string' && item.startsWith('/'))
+      ? response.data.data.menu_routes.filter(
+          (item) => typeof item === 'string' && item.startsWith('/'),
+        )
       : [],
     menuItems: mapCurrentUserMenuItems(response.data.data.menu_items),
     warmTip: mapCurrentUserWarmTip(response.data.data.warm_tip),
+    permissionKeys: Array.isArray(response.data.data.permission_keys)
+      ? response.data.data.permission_keys.map(String).filter(Boolean)
+      : [],
+    isSuperAdmin: Boolean(response.data.data.is_super_admin),
   }
 }
 
@@ -217,7 +234,9 @@ export async function getSystemSettings(): Promise<SystemSettings> {
     loginLockThreshold: Number(response.data.data.login_lock_threshold || 5),
     passwordMinLength: Number(response.data.data.password_min_length || 8),
     sessionTimeout: Number(response.data.data.session_timeout_minutes || 30),
-    passwordPolicy: Array.isArray(response.data.data.password_policy) ? response.data.data.password_policy : [],
+    passwordPolicy: Array.isArray(response.data.data.password_policy)
+      ? response.data.data.password_policy
+      : [],
     globalWatermarkEnabled: Boolean(response.data.data.global_watermark_enabled),
     globalWatermarkFontSize: Number(response.data.data.global_watermark_font_size || 16),
   }
@@ -243,7 +262,9 @@ export async function updateSystemSettings(settings: SystemSettings): Promise<Sy
     loginLockThreshold: Number(response.data.data.login_lock_threshold || 5),
     passwordMinLength: Number(response.data.data.password_min_length || 8),
     sessionTimeout: Number(response.data.data.session_timeout_minutes || 30),
-    passwordPolicy: Array.isArray(response.data.data.password_policy) ? response.data.data.password_policy : [],
+    passwordPolicy: Array.isArray(response.data.data.password_policy)
+      ? response.data.data.password_policy
+      : [],
     globalWatermarkEnabled: Boolean(response.data.data.global_watermark_enabled),
     globalWatermarkFontSize: Number(response.data.data.global_watermark_font_size || 16),
   }

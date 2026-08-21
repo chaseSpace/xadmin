@@ -11,7 +11,11 @@ import { useI18nStore } from '../store/i18n'
 import { useThemeStore } from '../store/theme'
 import { useUiSettingsStore } from '../store/uiSettings'
 import { getAppTheme } from '../styles/theme'
-import { registerApiErrorHandler, registerUnauthorizedHandler, resetUnauthorizedState } from '../services/api/client'
+import {
+  registerApiErrorHandler,
+  registerUnauthorizedHandler,
+  resetUnauthorizedState,
+} from '../services/api/client'
 import { createAppQueryClient } from '../services/api/queryClient'
 import { getMyProfile, getSystemSettings } from '../services/api/account'
 import { getAccessToken } from '../services/auth/token'
@@ -34,7 +38,9 @@ export function App() {
   const syncThemeFromStorage = useThemeStore((state) => state.syncFromStorage)
   const syncUiSettingsFromStorage = useUiSettingsStore((state) => state.syncFromStorage)
   const currentUserBackgroundImage = useUiSettingsStore((state) => state.currentUserBackgroundImage)
-  const globalBackgroundApplyEnabled = useUiSettingsStore((state) => state.globalBackgroundApplyEnabled)
+  const globalBackgroundApplyEnabled = useUiSettingsStore(
+    (state) => state.globalBackgroundApplyEnabled,
+  )
   const setGlobalWatermarkEnabled = useUiSettingsStore((state) => state.setGlobalWatermarkEnabled)
   const setGlobalWatermarkFontSize = useUiSettingsStore((state) => state.setGlobalWatermarkFontSize)
   const setSystemTimezone = useUiSettingsStore((state) => state.setSystemTimezone)
@@ -121,7 +127,10 @@ export function App() {
   }, [themeMode])
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-bg-apply', globalBackgroundApplyEnabled ? 'on' : 'off')
+    document.documentElement.setAttribute(
+      'data-bg-apply',
+      globalBackgroundApplyEnabled ? 'on' : 'off',
+    )
   }, [globalBackgroundApplyEnabled])
 
   useEffect(() => {
@@ -148,6 +157,8 @@ export function App() {
           avatar: profile.avatar,
           menuRoutes: profile.menuRoutes,
           menuItems: profile.menuItems,
+          permissionKeys: profile.permissionKeys,
+          isSuperAdmin: profile.isSuperAdmin,
           warmTip: profile.warmTip,
           menuLoaded: true,
           menuLoadError: '',
@@ -159,6 +170,8 @@ export function App() {
         updateCurrentUserProfile({
           menuRoutes: [],
           menuItems: [],
+          permissionKeys: [],
+          isSuperAdmin: false,
           menuLoaded: true,
           menuLoadError: message,
         })
@@ -182,7 +195,10 @@ export function App() {
     if (systemSettingsBootstrapTokenDone === currentToken) {
       return
     }
-    if (systemSettingsBootstrapTokenInFlight === currentToken && systemSettingsBootstrapInFlightPromise) {
+    if (
+      systemSettingsBootstrapTokenInFlight === currentToken &&
+      systemSettingsBootstrapInFlightPromise
+    ) {
       return
     }
 
@@ -204,7 +220,13 @@ export function App() {
           systemSettingsBootstrapInFlightPromise = null
         }
       })
-  }, [isAuthenticated, setGlobalWatermarkEnabled, setGlobalWatermarkFontSize, setServerTimezone, setSystemTimezone])
+  }, [
+    isAuthenticated,
+    setGlobalWatermarkEnabled,
+    setGlobalWatermarkFontSize,
+    setServerTimezone,
+    setSystemTimezone,
+  ])
 
   useEffect(() => {
     let disposed = false

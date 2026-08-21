@@ -8,10 +8,7 @@ import { useI18n } from '../i18n/messages'
 import { useLoginMutation } from '../services/api/auth'
 import { normalizeApiError } from '../services/api/error'
 import { loginRoute } from '../app/router'
-import {
-  loginRequestSchema,
-  type LoginRequestInput,
-} from '../services/schemas/auth'
+import { loginRequestSchema, type LoginRequestInput } from '../services/schemas/auth'
 import { WaveBackground } from './login/WaveBackground'
 
 export function LoginPage() {
@@ -47,6 +44,8 @@ export function LoginPage() {
           sessionId: result.sessionId,
           menuRoutes: [],
           menuItems: [],
+          permissionKeys: [],
+          isSuperAdmin: false,
           warmTip: null,
           menuLoaded: false,
           menuLoadError: '',
@@ -87,10 +86,17 @@ export function LoginPage() {
             name="username"
             control={control}
             render={({ field }) => (
-              <Input {...field} size="large" placeholder={t('请输入用户名')} autoComplete="username" />
+              <Input
+                {...field}
+                size="large"
+                placeholder={t('请输入用户名')}
+                autoComplete="username"
+              />
             )}
           />
-          {errors.username ? <Typography.Text type="danger">{errors.username.message}</Typography.Text> : null}
+          {errors.username ? (
+            <Typography.Text type="danger">{errors.username.message}</Typography.Text>
+          ) : null}
 
           <Controller
             name="password"
@@ -104,7 +110,9 @@ export function LoginPage() {
               />
             )}
           />
-          {errors.password ? <Typography.Text type="danger">{errors.password.message}</Typography.Text> : null}
+          {errors.password ? (
+            <Typography.Text type="danger">{errors.password.message}</Typography.Text>
+          ) : null}
 
           <UiButton
             type="primary"

@@ -1,4 +1,10 @@
 import { apiClient } from './client'
+import {
+  organizationPositionRolesSchema,
+  organizationUserPositionSchema,
+  organizationUserProfileSchema,
+  organizationUserStatusSchema,
+} from '../schemas/permissionSecurity'
 
 type OrganizationUsersApiData = {
   total: string
@@ -23,6 +29,8 @@ type OrganizationUsersApiData = {
     position_id: number | string
     position_name: string
     role_names?: string[]
+    is_protected?: boolean
+    can_manage?: boolean
   }>
 }
 
@@ -68,6 +76,8 @@ export type OrganizationUser = {
   positionId: number
   positionName: string
   roleNames: string[]
+  isProtected: boolean
+  canManage: boolean
 }
 
 export type OrganizationUsersPage = {
@@ -100,12 +110,14 @@ export type CreateOrganizationUserPayload = {
   positionId: number
 }
 
-export type UpdateOrganizationUserPayload = {
+export type UpdateOrganizationUserProfilePayload = {
   displayName: string
   avatar: string
   email: string
   phone: string
-  status: OrganizationUserStatus
+}
+
+export type AssignOrganizationUserPositionPayload = {
   departmentId: number
   positionId: number
 }
@@ -122,7 +134,13 @@ export type ImportOrganizationUserItem = {
 export async function getOrganizationUsers(
   pageNo = 1,
   pageSize = 10,
-  orderField?: 'uid' | 'username' | 'display_name' | 'status' | 'active_session_count' | 'last_login_at',
+  orderField?:
+    | 'uid'
+    | 'username'
+    | 'display_name'
+    | 'status'
+    | 'active_session_count'
+    | 'last_login_at',
   orderType?: 'asc' | 'desc',
   filters?: OrganizationUsersFilters,
 ): Promise<OrganizationUsersPage> {
@@ -162,6 +180,8 @@ export async function getOrganizationUsers(
       positionId: Number(item.position_id || 0),
       positionName: item.position_name,
       roleNames: Array.isArray(item.role_names) ? item.role_names.map(String).filter(Boolean) : [],
+      isProtected: Boolean(item.is_protected),
+      canManage: Boolean(item.can_manage),
     })),
   }
 }
@@ -199,12 +219,15 @@ export async function getOrganizationUserSessions(
   status?: 'active' | 'revoked' | 'expired',
   pageSize = 10,
 ): Promise<OrganizationUserSessionItem[]> {
-  const response = await apiClient.get<OrganizationUserSessionsApiResponse>(`/organization/users/${uid}/sessions`, {
-    params: {
-      status,
-      page_size: pageSize,
+  const response = await apiClient.get<OrganizationUserSessionsApiResponse>(
+    `/organization/users/${uid}/sessions`,
+    {
+      params: {
+        status,
+        page_size: pageSize,
+      },
     },
-  })
+  )
   return response.data.data.items.map((item) => ({
     sessionId: item.session_id,
     status: item.status,
@@ -217,7 +240,9 @@ export async function getOrganizationUserSessions(
   }))
 }
 
-export async function createOrganizationUser(payload: CreateOrganizationUserPayload): Promise<void> {
+export async function createOrganizationUser(
+  payload: CreateOrganizationUserPayload,
+): Promise<void> {
   await apiClient.post<OrganizationActionApiResponse>('/organization/users', {
     username: payload.username,
     password: payload.password,
@@ -230,15 +255,37 @@ export async function createOrganizationUser(payload: CreateOrganizationUserPayl
   })
 }
 
-export async function updateOrganizationUser(uid: number, payload: UpdateOrganizationUserPayload): Promise<void> {
-  await apiClient.put<OrganizationActionApiResponse>(`/organization/users/${uid}`, {
-    display_name: payload.displayName,
-    avatar: payload.avatar,
-    email: payload.email,
-    phone: payload.phone,
-    status: payload.status,
-    department_id: payload.departmentId,
-    position_id: payload.positionId,
+export async function updateOrganizationUserProfile(
+  uid: number,
+  payload: UpdateOrganizationUserProfilePayload,
+): Promise<void> {
+  const validated = organizationUserProfileSchema.parse(payload)
+  await apiClient.put<OrganizationActionApiResponse>(`/organization/users/${uid}/profile`, {
+    display_name: validated.displayName,
+    avatar: validated.avatar,
+    email: validated.email,
+    phone: validated.phone,
+  })
+}
+
+export async function assignOrganizationUserPosition(
+  uid: number,
+  payload: AssignOrganizationUserPositionPayload,
+): Promise<void> {
+  const validated = organizationUserPositionSchema.parse(payload)
+  await apiClient.post<OrganizationActionApiResponse>(`/organization/users/${uid}/position`, {
+    department_id: validated.departmentId,
+    position_id: validated.positionId,
+  })
+}
+
+export async function updateOrganizationUserStatus(
+  uid: number,
+  status: OrganizationUserStatus,
+): Promise<void> {
+  const validated = organizationUserStatusSchema.parse(status)
+  await apiClient.post<OrganizationActionApiResponse>(`/organization/users/${uid}/status`, {
+    status: validated,
   })
 }
 
@@ -247,7 +294,10 @@ export async function deleteOrganizationUser(uid: number): Promise<void> {
 }
 
 export async function resetOrganizationUserPassword(uid: number): Promise<string> {
-  const response = await apiClient.post<OrganizationActionApiResponse>(`/organization/users/${uid}/reset_password`, {})
+  const response = await apiClient.post<OrganizationActionApiResponse>(
+    `/organization/users/${uid}/reset-password`,
+    {},
+  )
   return response.data.data.temp_password ?? ''
 }
 
@@ -373,16 +423,22 @@ export function computeDepartmentStats(node: OrganizationDepartment): Organizati
 }
 
 export async function getOrganizationDepartmentsTree(): Promise<OrganizationDepartment[]> {
-  const response = await apiClient.get<OrganizationDepartmentTreeApiResponse>('/organization/departments/tree')
+  const response = await apiClient.get<OrganizationDepartmentTreeApiResponse>(
+    '/organization/departments/tree',
+  )
   return response.data.data.items.map(mapDepartmentItem)
 }
 
 export async function getOrganizationDepartment(id: number): Promise<OrganizationDepartment> {
-  const response = await apiClient.get<OrganizationDepartmentDetailApiResponse>(`/organization/departments/${id}`)
+  const response = await apiClient.get<OrganizationDepartmentDetailApiResponse>(
+    `/organization/departments/${id}`,
+  )
   return mapDepartmentItem(response.data.data)
 }
 
-export async function createOrganizationDepartment(payload: CreateOrganizationDepartmentPayload): Promise<void> {
+export async function createOrganizationDepartment(
+  payload: CreateOrganizationDepartmentPayload,
+): Promise<void> {
   await apiClient.post<OrganizationActionApiResponse>('/organization/departments', {
     parent_id: payload.parentId,
     name: payload.name,
@@ -390,14 +446,20 @@ export async function createOrganizationDepartment(payload: CreateOrganizationDe
   })
 }
 
-export async function updateOrganizationDepartment(id: number, payload: UpdateOrganizationDepartmentPayload): Promise<void> {
+export async function updateOrganizationDepartment(
+  id: number,
+  payload: UpdateOrganizationDepartmentPayload,
+): Promise<void> {
   await apiClient.put<OrganizationActionApiResponse>(`/organization/departments/${id}`, {
     name: payload.name,
     code: payload.code,
   })
 }
 
-export async function toggleOrganizationDepartmentStatus(id: number, enabled: boolean): Promise<void> {
+export async function toggleOrganizationDepartmentStatus(
+  id: number,
+  enabled: boolean,
+): Promise<void> {
   await apiClient.post<OrganizationActionApiResponse>(`/organization/departments/${id}/status`, {
     enabled,
   })
@@ -423,6 +485,10 @@ type OrganizationPositionApiItem = {
   updated_at: string
   role_ids?: Array<number | string>
   role_names?: string[]
+  is_protected?: boolean
+  can_manage?: boolean
+  can_assign?: boolean
+  can_assign_roles?: boolean
 }
 
 type OrganizationPositionsApiResponse = {
@@ -458,6 +524,10 @@ export type OrganizationPosition = {
   updatedAt: string
   roleIds: number[]
   roleNames: string[]
+  isProtected: boolean
+  canManage: boolean
+  canAssign: boolean
+  canAssignRoles: boolean
 }
 
 export type OrganizationPositionsPage = {
@@ -481,7 +551,6 @@ export type CreateOrganizationPositionPayload = {
   level: string
   hc: number
   staffed: number
-  roleIds: number[]
 }
 
 export type UpdateOrganizationPositionPayload = {
@@ -492,7 +561,6 @@ export type UpdateOrganizationPositionPayload = {
   hc: number
   staffed: number
   status: 'enabled' | 'disabled'
-  roleIds: number[]
 }
 
 function mapPositionItem(item: OrganizationPositionApiItem): OrganizationPosition {
@@ -513,8 +581,16 @@ function mapPositionItem(item: OrganizationPositionApiItem): OrganizationPositio
     relatedCount: Number.isFinite(relatedCount) ? relatedCount : Number.isFinite(hc) ? hc : 0,
     status: item.status,
     updatedAt: item.updated_at,
-    roleIds: (item.role_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
-    roleNames: (item.role_names ?? []).map((name) => String(name).trim()).filter((name) => name.length > 0),
+    roleIds: (item.role_ids ?? [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id) && id > 0),
+    roleNames: (item.role_names ?? [])
+      .map((name) => String(name).trim())
+      .filter((name) => name.length > 0),
+    isProtected: Boolean(item.is_protected),
+    canManage: Boolean(item.can_manage),
+    canAssign: Boolean(item.can_assign),
+    canAssignRoles: Boolean(item.can_assign_roles),
   }
 }
 
@@ -525,18 +601,21 @@ export async function getOrganizationPositions(
   orderType?: 'asc' | 'desc',
   filters?: OrganizationPositionFilters,
 ): Promise<OrganizationPositionsPage> {
-  const response = await apiClient.get<OrganizationPositionsApiResponse>('/organization/positions', {
-    params: {
-      page_no: pageNo,
-      page_size: pageSize,
-      order_field: orderField,
-      order_type: orderType,
-      keyword: filters?.keyword,
-      department_id: filters?.departmentId,
-      level: filters?.level,
-      status: filters?.status,
+  const response = await apiClient.get<OrganizationPositionsApiResponse>(
+    '/organization/positions',
+    {
+      params: {
+        page_no: pageNo,
+        page_size: pageSize,
+        order_field: orderField,
+        order_type: orderType,
+        keyword: filters?.keyword,
+        department_id: filters?.departmentId,
+        level: filters?.level,
+        status: filters?.status,
+      },
     },
-  })
+  )
   return {
     total: Number(response.data.data.total || 0),
     pn: response.data.data.page.pn,
@@ -546,11 +625,15 @@ export async function getOrganizationPositions(
 }
 
 export async function getOrganizationPosition(id: number): Promise<OrganizationPosition> {
-  const response = await apiClient.get<OrganizationPositionDetailApiResponse>(`/organization/positions/${id}`)
+  const response = await apiClient.get<OrganizationPositionDetailApiResponse>(
+    `/organization/positions/${id}`,
+  )
   return mapPositionItem(response.data.data)
 }
 
-export async function createOrganizationPosition(payload: CreateOrganizationPositionPayload): Promise<void> {
+export async function createOrganizationPosition(
+  payload: CreateOrganizationPositionPayload,
+): Promise<void> {
   await apiClient.post<OrganizationActionApiResponse>('/organization/positions', {
     name: payload.name,
     code: payload.code,
@@ -558,11 +641,13 @@ export async function createOrganizationPosition(payload: CreateOrganizationPosi
     level: payload.level,
     hc: payload.hc,
     staffed: payload.staffed,
-    role_ids: payload.roleIds,
   })
 }
 
-export async function updateOrganizationPosition(id: number, payload: UpdateOrganizationPositionPayload): Promise<void> {
+export async function updateOrganizationPosition(
+  id: number,
+  payload: UpdateOrganizationPositionPayload,
+): Promise<void> {
   await apiClient.put<OrganizationActionApiResponse>(`/organization/positions/${id}`, {
     name: payload.name,
     code: payload.code,
@@ -571,11 +656,23 @@ export async function updateOrganizationPosition(id: number, payload: UpdateOrga
     hc: payload.hc,
     staffed: payload.staffed,
     status: payload.status === 'enabled' ? 1 : 0,
-    role_ids: payload.roleIds,
   })
 }
 
-export async function toggleOrganizationPositionStatus(id: number, enabled: boolean): Promise<void> {
+export async function updateOrganizationPositionRoles(
+  id: number,
+  roleIds: number[],
+): Promise<void> {
+  const validated = organizationPositionRolesSchema.parse(roleIds)
+  await apiClient.post<OrganizationActionApiResponse>(`/organization/positions/${id}/roles`, {
+    role_ids: validated,
+  })
+}
+
+export async function toggleOrganizationPositionStatus(
+  id: number,
+  enabled: boolean,
+): Promise<void> {
   await apiClient.post<OrganizationActionApiResponse>(`/organization/positions/${id}/status`, {
     enabled,
   })
@@ -585,7 +682,11 @@ export async function deleteOrganizationPosition(id: number): Promise<void> {
   await apiClient.delete<OrganizationActionApiResponse>(`/organization/positions/${id}`)
 }
 
-export async function batchTransferOrganizationUsers(uids: number[], departmentId: number, positionId: number): Promise<void> {
+export async function batchTransferOrganizationUsers(
+  uids: number[],
+  departmentId: number,
+  positionId: number,
+): Promise<void> {
   await apiClient.post<OrganizationActionApiResponse>('/organization/users/transfer-position', {
     uids,
     department_id: departmentId,

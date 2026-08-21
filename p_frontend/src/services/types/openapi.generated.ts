@@ -4,217 +4,505 @@
  */
 
 export interface paths {
-    "/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["authLogin"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listAdminUsers"];
-        put?: never;
-        post: operations["createAdminUser"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getAdminUser"];
-        put: operations["updateAdminUser"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+  '/auth/login': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['authLogin']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/account/me/profile': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getMyProfile']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/organization/users/{uid}/profile': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put: operations['updateOrganizationUserProfile']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/organization/users/{uid}/position': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['assignOrganizationUserPosition']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/organization/users/{uid}/status': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['updateOrganizationUserStatus']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/organization/users/{uid}/reset-password': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['resetOrganizationUserPassword']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/organization/positions/{id}/roles': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['updateOrganizationPositionRoles']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/users': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['listAdminUsers']
+    put?: never
+    post: operations['createAdminUser']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/users/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getAdminUser']
+    put: operations['updateAdminUser']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
-export type webhooks = Record<string, never>;
+export type webhooks = Record<string, never>
 export interface components {
-    schemas: {
-        LoginRequest: {
-            username: string;
-            password: string;
-        };
-        LoginResponse: {
-            token: string;
-        };
-        AdminUser: {
-            id: string;
-            name: string;
-            /** @enum {string} */
-            role: "Super Admin" | "Operator" | "Auditor";
-            /** @enum {string} */
-            status: "active" | "disabled";
-        };
-        AdminUserListResponse: {
-            items: components["schemas"]["AdminUser"][];
-            total: number;
-        };
-        CreateAdminUserRequest: {
-            name: string;
-            /** @enum {string} */
-            role: "Super Admin" | "Operator" | "Auditor";
-            /** @enum {string} */
-            status: "active" | "disabled";
-        };
-        UpdateAdminUserRequest: {
-            name: string;
-            /** @enum {string} */
-            role: "Super Admin" | "Operator" | "Auditor";
-            /** @enum {string} */
-            status: "active" | "disabled";
-        };
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    AuthMeProfileResponse: {
+      code: number
+      message: string
+      data: {
+        /** Format: int32 */
+        uid: number
+        username: string
+        display_name?: string
+        avatar?: string
+        email?: string
+        phone?: string
+        menu_routes?: string[]
+        permission_keys: string[]
+        is_super_admin: boolean
+      }
+    }
+    UpdateOrganizationUserProfileRequest: {
+      display_name: string
+      avatar?: string
+      email?: string
+      phone?: string
+    }
+    AssignOrganizationUserPositionRequest: {
+      /** Format: int64 */
+      department_id: number
+      /** Format: int64 */
+      position_id: number
+    }
+    UpdateOrganizationUserStatusRequest: {
+      status: number
+    }
+    UpdateOrganizationPositionRolesRequest: {
+      role_ids: number[]
+    }
+    ActionResponse: {
+      code: number
+      message: string
+      data: {
+        success: boolean
+        action: string
+        temp_password?: string
+      }
+    }
+    LoginRequest: {
+      username: string
+      password: string
+    }
+    LoginResponse: {
+      token: string
+    }
+    AdminUser: {
+      id: string
+      name: string
+      /** @enum {string} */
+      role: 'Super Admin' | 'Operator' | 'Auditor'
+      /** @enum {string} */
+      status: 'active' | 'disabled'
+    }
+    AdminUserListResponse: {
+      items: components['schemas']['AdminUser'][]
+      total: number
+    }
+    CreateAdminUserRequest: {
+      name: string
+      /** @enum {string} */
+      role: 'Super Admin' | 'Operator' | 'Auditor'
+      /** @enum {string} */
+      status: 'active' | 'disabled'
+    }
+    UpdateAdminUserRequest: {
+      name: string
+      /** @enum {string} */
+      role: 'Super Admin' | 'Operator' | 'Auditor'
+      /** @enum {string} */
+      status: 'active' | 'disabled'
+    }
+  }
+  responses: never
+  parameters: {
+    UserUID: number
+    PositionID: number
+  }
+  requestBodies: never
+  headers: never
+  pathItems: never
 }
-export type $defs = Record<string, never>;
+export type $defs = Record<string, never>
 export interface operations {
-    authLogin: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginRequest"];
-            };
-        };
-        responses: {
-            /** @description ok */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LoginResponse"];
-                };
-            };
-        };
-    };
-    listAdminUsers: {
-        parameters: {
-            query: {
-                page: number;
-                pageSize: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ok */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminUserListResponse"];
-                };
-            };
-        };
-    };
-    createAdminUser: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAdminUserRequest"];
-            };
-        };
-        responses: {
-            /** @description ok */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminUser"];
-                };
-            };
-        };
-    };
-    getAdminUser: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ok */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminUser"];
-                };
-            };
-        };
-    };
-    updateAdminUser: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAdminUserRequest"];
-            };
-        };
-        responses: {
-            /** @description ok */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminUser"];
-                };
-            };
-        };
-    };
+  authLogin: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoginRequest']
+      }
+    }
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LoginResponse']
+        }
+      }
+    }
+  }
+  getMyProfile: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AuthMeProfileResponse']
+        }
+      }
+    }
+  }
+  updateOrganizationUserProfile: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        uid: components['parameters']['UserUID']
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateOrganizationUserProfileRequest']
+      }
+    }
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ActionResponse']
+        }
+      }
+    }
+  }
+  assignOrganizationUserPosition: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        uid: components['parameters']['UserUID']
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AssignOrganizationUserPositionRequest']
+      }
+    }
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ActionResponse']
+        }
+      }
+    }
+  }
+  updateOrganizationUserStatus: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        uid: components['parameters']['UserUID']
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateOrganizationUserStatusRequest']
+      }
+    }
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ActionResponse']
+        }
+      }
+    }
+  }
+  resetOrganizationUserPassword: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        uid: components['parameters']['UserUID']
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ActionResponse']
+        }
+      }
+    }
+  }
+  updateOrganizationPositionRoles: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: components['parameters']['PositionID']
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateOrganizationPositionRolesRequest']
+      }
+    }
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ActionResponse']
+        }
+      }
+    }
+  }
+  listAdminUsers: {
+    parameters: {
+      query: {
+        page: number
+        pageSize: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AdminUserListResponse']
+        }
+      }
+    }
+  }
+  createAdminUser: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateAdminUserRequest']
+      }
+    }
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AdminUser']
+        }
+      }
+    }
+  }
+  getAdminUser: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AdminUser']
+        }
+      }
+    }
+  }
+  updateAdminUser: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateAdminUserRequest']
+      }
+    }
+    responses: {
+      /** @description ok */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AdminUser']
+        }
+      }
+    }
+  }
 }
