@@ -43,6 +43,11 @@
         ]
       }
     ],
+    "permission_keys": [
+      "organization.users.edit_profile",
+      "organization.users.assign_position"
+    ],
+    "is_super_admin": false,
     "warm_tip": {
       "id": 3,
       "tip_type": "positive",
@@ -52,6 +57,9 @@
   }
 }
 ```
+
+- `permission_keys`：当前账号全部有效权限键，包含按钮权限，供前端控制操作入口。
+- `is_super_admin`：依据稳定 `role_code=super_admin` 和 `is_protected=true` 计算，不依赖用户名或角色显示名称。
 
 ## GET /v1/account/me/settings
 - 描述：获取当前登录账号个人设置。

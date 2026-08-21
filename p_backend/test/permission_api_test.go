@@ -60,13 +60,15 @@ func (m *mockPermissionService) SyncMenus(ctx context.Context, operatorUID int32
 	_ = operatorUID
 	return &xadmin.PermissionActionResp{Success: true, Action: "sync_menus"}, nil
 }
-func (m *mockPermissionService) ListRoles(ctx context.Context, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error) {
+func (m *mockPermissionService) ListRoles(ctx context.Context, operatorUID int32, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.PermissionRolesResp{Total: 1, Items: []*xadmin.PermissionRoleItem{{Id: 1, RoleName: "超级管理员", RoleType: "system"}}}, nil
 }
-func (m *mockPermissionService) GetRole(ctx context.Context, req *xadmin.PermissionRoleDetailReq) (*xadmin.PermissionRoleItem, error) {
+func (m *mockPermissionService) GetRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionRoleDetailReq) (*xadmin.PermissionRoleItem, error) {
 	_ = ctx
+	_ = operatorUID
 	return &xadmin.PermissionRoleItem{Id: req.GetId(), RoleName: "超级管理员", RoleType: "system"}, nil
 }
 func (m *mockPermissionService) CreateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error) {

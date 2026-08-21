@@ -128,3 +128,35 @@ func TestEnsureCanManagePositionAndRoleRequireStrictlyLowerScope(t *testing.T) {
 		t.Fatal("expected protected role to be denied")
 	}
 }
+
+func TestCapabilityFlagsMirrorEnforcementRules(t *testing.T) {
+	ordinary := &OperatorScope{
+		UID:                  2,
+		PositionID:           20,
+		Permissions:          []string{"read", "write", "manage"},
+		DelegablePermissions: []string{"read", "write"},
+	}
+	superAdmin := &OperatorScope{UID: 1, PositionID: 10, SuperAdmin: true}
+
+	if !CanManageUserFromScope(ordinary, 3, false, []string{"read"}) {
+		t.Fatal("expected lower-scope user to be manageable")
+	}
+	if CanManageUserFromScope(ordinary, 2, false, []string{"read"}) {
+		t.Fatal("expected self-management to be denied")
+	}
+	if CanManageUserFromScope(ordinary, 4, false, []string{"read", "write", "manage"}) {
+		t.Fatal("expected equal-scope user to be denied")
+	}
+	if CanManagePositionFromScope(ordinary, 30, true, []string{"read"}) {
+		t.Fatal("expected protected position management to be denied")
+	}
+	if !CanAssignPositionFromScope(ordinary, 30, false, []string{"read", "write"}) {
+		t.Fatal("expected delegable position to be assignable")
+	}
+	if CanAssignPositionFromScope(ordinary, 40, false, []string{"read", "reset_password"}) {
+		t.Fatal("expected non-delegable position to be denied")
+	}
+	if !CanManageRoleFromScope(superAdmin, true, []string{"root"}) {
+		t.Fatal("expected super admin capability to bypass protected targets")
+	}
+}

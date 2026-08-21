@@ -22,6 +22,14 @@ type Service struct {
 	repo Repository
 }
 
+type OperatorScope struct {
+	UID                  int32
+	PositionID           int64
+	SuperAdmin           bool
+	Permissions          []string
+	DelegablePermissions []string
+}
+
 func NewService() *Service {
 	return &Service{repo: authorizationrepo.NewRepo()}
 }
@@ -36,6 +44,75 @@ func (s *Service) IsSuperAdmin(ctx context.Context, uid int32) (bool, error) {
 
 func (s *Service) IsProtectedRole(ctx context.Context, roleID int64) (bool, error) {
 	return s.repo.RoleIsProtected(ctx, roleID)
+}
+
+func (s *Service) GetOperatorScope(ctx context.Context, uid int32) (*OperatorScope, error) {
+	if uid <= 0 {
+		return &OperatorScope{UID: uid}, nil
+	}
+	superAdmin, err := s.repo.IsSuperAdmin(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	positionID, err := s.repo.GetUserPositionID(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	permissions, err := s.repo.ListEffectivePermissionKeysByUID(ctx, uid, false)
+	if err != nil {
+		return nil, err
+	}
+	delegablePermissions, err := s.repo.ListEffectivePermissionKeysByUID(ctx, uid, true)
+	if err != nil {
+		return nil, err
+	}
+	return &OperatorScope{
+		UID:                  uid,
+		PositionID:           positionID,
+		SuperAdmin:           superAdmin,
+		Permissions:          permissions,
+		DelegablePermissions: delegablePermissions,
+	}, nil
+}
+
+func CanManageUserFromScope(scope *OperatorScope, targetUID int32, protected bool, targetPermissions []string) bool {
+	if scope == nil || scope.UID <= 0 || targetUID <= 0 || scope.UID == targetUID {
+		return false
+	}
+	if scope.SuperAdmin {
+		return true
+	}
+	return !protected && isStrictSubset(targetPermissions, scope.Permissions)
+}
+
+func CanManagePositionFromScope(scope *OperatorScope, positionID int64, protected bool, positionPermissions []string) bool {
+	if scope == nil || scope.UID <= 0 || positionID <= 0 {
+		return false
+	}
+	if scope.SuperAdmin {
+		return true
+	}
+	return !protected && scope.PositionID != positionID && isStrictSubset(positionPermissions, scope.Permissions)
+}
+
+func CanAssignPositionFromScope(scope *OperatorScope, positionID int64, protected bool, positionPermissions []string) bool {
+	if scope == nil || scope.UID <= 0 || positionID <= 0 {
+		return false
+	}
+	if scope.SuperAdmin {
+		return true
+	}
+	return !protected && isSubset(positionPermissions, scope.DelegablePermissions)
+}
+
+func CanManageRoleFromScope(scope *OperatorScope, protected bool, rolePermissions []string) bool {
+	if scope == nil || scope.UID <= 0 {
+		return false
+	}
+	if scope.SuperAdmin {
+		return true
+	}
+	return !protected && isStrictSubset(rolePermissions, scope.Permissions)
 }
 
 func (s *Service) EnsureSuperAdmin(ctx context.Context, uid int32) error {

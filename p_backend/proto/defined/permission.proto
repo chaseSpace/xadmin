@@ -65,6 +65,8 @@ message PermissionMenuNode {
   int64 parent_id = 2;
   string name = 3;
   repeated PermissionMenuNode children = 4;
+  string permission_key = 5;
+  bool is_delegable = 6;
 }
 
 message PermissionMenuDetailReq {
@@ -123,6 +125,8 @@ message PermissionRoleItem {
   int32 users = 5;
   string updated_at = 6;
   bool is_protected = 7;
+  bool can_manage = 8;
+  bool can_assign_menus = 9;
 }
 
 message PermissionRolesResp {

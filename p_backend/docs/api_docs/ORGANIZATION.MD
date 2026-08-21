@@ -107,6 +107,7 @@
 ## GET /v1/organization/positions/:id
 - 描述：岗位详情。
 - 鉴权：是。
+- 列表和详情均返回 `is_protected/can_manage/can_assign/can_assign_roles`，这些字段由后端按当前操作者实时计算。
 
 ## POST /v1/organization/positions
 - 描述：创建岗位基础资料，不绑定角色。
@@ -211,6 +212,8 @@
 }
 ```
 - `role_names`：用户岗位关联角色名列表，仅关联查询展示，不在用户创建/编辑接口中直接修改。
+- `is_protected`：目标用户是否继承受保护角色。
+- `can_manage`：当前操作者是否满足非自己、非受保护且目标权限为真子集等 Service 规则；前端所有用户写操作应同时结合自身权限键判断。
 
 ## POST /v1/organization/users/import
 - 描述：导入组织用户（前端解析 CSV 后提交结构化数据）。

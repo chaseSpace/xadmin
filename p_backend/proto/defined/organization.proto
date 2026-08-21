@@ -42,6 +42,8 @@ message OrganizationUserItem {
   int64 position_id = 14;
   string position_name = 15;
   repeated string role_names = 16;
+  bool is_protected = 17;
+  bool can_manage = 18;
 }
 
 message OrganizationUsersResp {
@@ -208,6 +210,10 @@ message OrganizationPositionItem {
   repeated int64 role_ids = 11;
   repeated string role_names = 12;
   int32 related_count = 13;
+  bool is_protected = 14;
+  bool can_manage = 15;
+  bool can_assign = 16;
+  bool can_assign_roles = 17;
 }
 
 message OrganizationBatchTransferUsersReq {

@@ -275,7 +275,7 @@ func (h *Handler) Roles(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.ListRoles(c.UserContext(), req)
+	resp, err := h.svc.ListRoles(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -298,7 +298,7 @@ func (h *Handler) Role(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.GetRole(c.UserContext(), req)
+	resp, err := h.svc.GetRole(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),

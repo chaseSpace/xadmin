@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	authorizationsvc "monorepo/internal/service/authorization"
 	xadmin "monorepo/proto/xadminpb"
 )
 
@@ -21,6 +22,10 @@ func (s authorizationStub) EnsureSuperAdmin(context.Context, int32) error {
 
 func (s authorizationStub) EnsureCanManageRole(context.Context, int32, int64) error {
 	return s.manageRoleErr
+}
+
+func (s authorizationStub) GetOperatorScope(context.Context, int32) (*authorizationsvc.OperatorScope, error) {
+	return &authorizationsvc.OperatorScope{}, nil
 }
 
 func TestControlPlaneMutationsRejectDirectServiceBypass(t *testing.T) {

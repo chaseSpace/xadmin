@@ -42,6 +42,8 @@ type UserRow struct {
 	PositionID         int64      `gorm:"column:position_id"`
 	PositionName       string     `gorm:"column:position_name"`
 	RoleNamesCSV       string     `gorm:"column:role_names_csv"`
+	PermissionKeysCSV  string     `gorm:"column:permission_keys_csv"`
+	Protected          bool       `gorm:"column:is_protected"`
 	LastLoginAt        *time.Time `gorm:"column:last_login_at"`
 	LastLoginIP        string     `gorm:"column:last_login_ip"`
 	ActiveSessionCount int32      `gorm:"column:active_session_count"`
@@ -66,20 +68,39 @@ type PositionFilters struct {
 }
 
 type PositionRow struct {
-	ID             int64      `gorm:"column:id"`
-	Name           string     `gorm:"column:name"`
-	Code           string     `gorm:"column:code"`
-	DepartmentID   int64      `gorm:"column:department_id"`
-	DepartmentName string     `gorm:"column:department_name"`
-	Level          string     `gorm:"column:level"`
-	Hc             int32      `gorm:"column:hc"`
-	Staffed        int32      `gorm:"column:staffed"`
-	RelatedCount   int32      `gorm:"column:related_count"`
-	Status         int32      `gorm:"column:status"`
-	UpdatedAt      *time.Time `gorm:"column:updated_at"`
-	RoleIDsCSV     string     `gorm:"column:role_ids_csv"`
-	RoleNamesCSV   string     `gorm:"column:role_names_csv"`
+	ID                int64      `gorm:"column:id"`
+	Name              string     `gorm:"column:name"`
+	Code              string     `gorm:"column:code"`
+	DepartmentID      int64      `gorm:"column:department_id"`
+	DepartmentName    string     `gorm:"column:department_name"`
+	Level             string     `gorm:"column:level"`
+	Hc                int32      `gorm:"column:hc"`
+	Staffed           int32      `gorm:"column:staffed"`
+	RelatedCount      int32      `gorm:"column:related_count"`
+	Status            int32      `gorm:"column:status"`
+	UpdatedAt         *time.Time `gorm:"column:updated_at"`
+	RoleIDsCSV        string     `gorm:"column:role_ids_csv"`
+	RoleNamesCSV      string     `gorm:"column:role_names_csv"`
+	PermissionKeysCSV string     `gorm:"column:permission_keys_csv"`
+	Protected         bool       `gorm:"column:is_protected"`
 }
+
+const positionPermissionScopeJoinSQL = `
+LEFT JOIN (
+  SELECT opr.position_id,
+         COALESCE(
+           STRING_AGG(DISTINCT m.permission_key, ',' ORDER BY m.permission_key)
+             FILTER (WHERE m.permission_key <> ''),
+           ''
+         ) AS permission_keys_csv,
+         BOOL_OR(r.is_protected) AS is_protected
+  FROM organization_position_role opr
+  INNER JOIN permission_role r ON r.id = opr.role_id AND r.deleted_at = 0
+  LEFT JOIN permission_role_menu prm ON prm.role_id = r.id
+  LEFT JOIN permission_menu m ON m.id = prm.menu_id AND m.deleted_at = 0 AND m.status = ?
+  GROUP BY opr.position_id
+) ps ON ps.position_id = p.id
+`
 
 func NewRepo() *Repo {
 	return &Repo{db: db.GetDatabase()}
@@ -176,6 +197,8 @@ u.uid,
   u.position_id,
   COALESCE(p.name, '') AS position_name,
   COALESCE(pr.role_names_csv, '') AS role_names_csv,
+	COALESCE(ps.permission_keys_csv, '') AS permission_keys_csv,
+	COALESCE(ps.is_protected, FALSE) AS is_protected,
   u.last_login_at,
   u.last_login_ip,
   COALESCE(s.active_session_count, 0) AS active_session_count
@@ -190,6 +213,7 @@ LEFT JOIN (
   GROUP BY opr.position_id
 ) pr ON pr.position_id = u.position_id
 `).
+		Joins(strings.Replace(positionPermissionScopeJoinSQL, "ps.position_id = p.id", "ps.position_id = u.position_id", 1), consts.PermissionStatusEnabled).
 		Joins(`
 LEFT JOIN (
   SELECT uid, COUNT(1) AS active_session_count
@@ -443,7 +467,9 @@ COUNT(DISTINCT u.id) AS related_count,
 p.status,
 p.updated_at,
 COALESCE(pr.role_ids_csv, '') as role_ids_csv,
-COALESCE(pr.role_names_csv, '') as role_names_csv
+COALESCE(pr.role_names_csv, '') as role_names_csv,
+COALESCE(ps.permission_keys_csv, '') as permission_keys_csv,
+COALESCE(ps.is_protected, FALSE) as is_protected
 `, consts.UserStatusActive).
 		Joins("LEFT JOIN organization_department d ON d.id = p.department_id AND d.deleted_at = 0").
 		Joins("LEFT JOIN admin_user u ON u.position_id = p.id AND u.deleted_at = 0", consts.UserStatusActive).
@@ -457,8 +483,9 @@ LEFT JOIN (
   GROUP BY pr.position_id
 ) pr ON pr.position_id = p.id
 `).
+		Joins(positionPermissionScopeJoinSQL, consts.PermissionStatusEnabled).
 		Where("p.deleted_at = 0").
-		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv")
+		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv, ps.permission_keys_csv, ps.is_protected")
 	query = applyPositionFilters(query, filters)
 	if len(sort) == 0 {
 		// Avoid ambiguous `created_at` when joined tables contain same column.
@@ -496,7 +523,9 @@ COUNT(DISTINCT u.id) AS related_count,
 p.status,
 p.updated_at,
 COALESCE(pr.role_ids_csv, '') as role_ids_csv,
-COALESCE(pr.role_names_csv, '') as role_names_csv
+COALESCE(pr.role_names_csv, '') as role_names_csv,
+COALESCE(ps.permission_keys_csv, '') as permission_keys_csv,
+COALESCE(ps.is_protected, FALSE) as is_protected
 `, consts.UserStatusActive).
 		Joins("LEFT JOIN organization_department d ON d.id = p.department_id AND d.deleted_at = 0").
 		Joins("LEFT JOIN admin_user u ON u.position_id = p.id AND u.deleted_at = 0", consts.UserStatusActive).
@@ -510,8 +539,9 @@ LEFT JOIN (
   GROUP BY pr.position_id
 ) pr ON pr.position_id = p.id
 `).
+		Joins(positionPermissionScopeJoinSQL, consts.PermissionStatusEnabled).
 		Where("p.id = ? AND p.deleted_at = 0", id).
-		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv").
+		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv, ps.permission_keys_csv, ps.is_protected").
 		First(&row).Error
 	if err != nil {
 		return nil, xerr.WrapDBNotFound(err, "organization position not found")

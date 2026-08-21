@@ -73,8 +73,9 @@ func (m *mockOrganizationService) DeleteDepartment(ctx context.Context, req *xad
 	return &xadmin.OrganizationActionResp{Success: true, Action: "delete_department"}, nil
 }
 
-func (m *mockOrganizationService) ListPositions(ctx context.Context, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error) {
+func (m *mockOrganizationService) ListPositions(ctx context.Context, operatorUID int32, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationPositionsResp{
 		Total: 1,
@@ -94,8 +95,9 @@ func (m *mockOrganizationService) ListPositions(ctx context.Context, req *xadmin
 	}, nil
 }
 
-func (m *mockOrganizationService) GetPosition(ctx context.Context, req *xadmin.OrganizationPositionDetailReq) (*xadmin.OrganizationPositionItem, error) {
+func (m *mockOrganizationService) GetPosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationPositionDetailReq) (*xadmin.OrganizationPositionItem, error) {
 	_ = ctx
+	_ = operatorUID
 	return &xadmin.OrganizationPositionItem{
 		Id:             req.GetId(),
 		Name:           "前端工程师",
@@ -144,8 +146,9 @@ func (m *mockOrganizationService) DeletePosition(ctx context.Context, operatorUI
 	return &xadmin.OrganizationActionResp{Success: true, Action: "delete_position"}, nil
 }
 
-func (m *mockOrganizationService) ListUsers(ctx context.Context, req *xadmin.OrganizationUsersReq) (*xadmin.OrganizationUsersResp, error) {
+func (m *mockOrganizationService) ListUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUsersReq) (*xadmin.OrganizationUsersResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationUsersResp{
 		Total: 1,

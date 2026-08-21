@@ -26,8 +26,8 @@ type Service interface {
 	DeleteMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteMenuReq) (*xadmin.PermissionActionResp, error)
 	SyncMenus(ctx context.Context, operatorUID int32) (*xadmin.PermissionActionResp, error)
 
-	ListRoles(ctx context.Context, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error)
-	GetRole(ctx context.Context, req *xadmin.PermissionRoleDetailReq) (*xadmin.PermissionRoleItem, error)
+	ListRoles(ctx context.Context, operatorUID int32, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error)
+	GetRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionRoleDetailReq) (*xadmin.PermissionRoleItem, error)
 	CreateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error)
 	UpdateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error)
 	DeleteRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteRoleReq) (*xadmin.PermissionActionResp, error)
@@ -38,6 +38,7 @@ type Service interface {
 type authorizationService interface {
 	EnsureSuperAdmin(ctx context.Context, uid int32) error
 	EnsureCanManageRole(ctx context.Context, operatorUID int32, roleID int64) error
+	GetOperatorScope(ctx context.Context, uid int32) (*authorizationsvc.OperatorScope, error)
 }
 
 type service struct {
@@ -104,7 +105,10 @@ func (s *service) GetMenuTree(ctx context.Context) (*xadmin.PermissionMenuTreeRe
 	childrenMap := make(map[int64][]*xadmin.PermissionMenuNode, len(rows))
 	roots := make([]*xadmin.PermissionMenuNode, 0, 8)
 	for _, row := range rows {
-		node := &xadmin.PermissionMenuNode{Id: row.ID, ParentId: row.ParentID, Name: row.Name}
+		node := &xadmin.PermissionMenuNode{
+			Id: row.ID, ParentId: row.ParentID, Name: row.Name,
+			PermissionKey: row.PermissionKey, IsDelegable: row.IsDelegable,
+		}
 		nodes[row.ID] = node
 		childrenMap[row.ParentID] = append(childrenMap[row.ParentID], node)
 	}
@@ -238,7 +242,7 @@ func (s *service) SyncMenus(ctx context.Context, operatorUID int32) (*xadmin.Per
 	return &xadmin.PermissionActionResp{Success: true, Action: "sync_menus"}, nil
 }
 
-func (s *service) ListRoles(ctx context.Context, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error) {
+func (s *service) ListRoles(ctx context.Context, operatorUID int32, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error) {
 	page := req.GetPage()
 	if page == nil {
 		page = &commpb.PageArgs{Pn: 1, Ps: 10}
@@ -249,23 +253,33 @@ func (s *service) ListRoles(ctx context.Context, req *xadmin.PermissionRolesReq)
 	if page.GetPs() <= 0 {
 		page.Ps = 10
 	}
-	rows, total, err := s.repo.ListRoles(ctx, page, normalizeRoleSortArgs(req.GetSort()), buildRoleFilters(req))
+	scope, err := s.authorization.GetOperatorScope(ctx, operatorUID)
+	if err != nil {
+		return nil, err
+	}
+	filters := buildRoleFilters(req)
+	filters.ExcludeProtected = !scope.SuperAdmin
+	rows, total, err := s.repo.ListRoles(ctx, page, normalizeRoleSortArgs(req.GetSort()), filters)
 	if err != nil {
 		return nil, err
 	}
 	items := make([]*xadmin.PermissionRoleItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapRoleRow(&row))
+		items = append(items, mapRoleRow(&row, scope))
 	}
 	return &xadmin.PermissionRolesResp{Items: items, Total: total, Page: &commpb.PageArgs{Pn: page.GetPn(), Ps: page.GetPs()}}, nil
 }
 
-func (s *service) GetRole(ctx context.Context, req *xadmin.PermissionRoleDetailReq) (*xadmin.PermissionRoleItem, error) {
+func (s *service) GetRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionRoleDetailReq) (*xadmin.PermissionRoleItem, error) {
 	row, err := s.repo.GetRoleByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return mapRoleRow(row), nil
+	scope, err := s.authorization.GetOperatorScope(ctx, operatorUID)
+	if err != nil {
+		return nil, err
+	}
+	return mapRoleRow(row, scope), nil
 }
 
 func (s *service) CreateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error) {
@@ -431,19 +445,33 @@ func mapMenuRow(row *permissionrepo.MenuRow) *xadmin.PermissionMenuItem {
 	return item
 }
 
-func mapRoleRow(row *permissionrepo.RoleRow) *xadmin.PermissionRoleItem {
+func mapRoleRow(row *permissionrepo.RoleRow, scope *authorizationsvc.OperatorScope) *xadmin.PermissionRoleItem {
+	canManage := !isSystemRole(row) && authorizationsvc.CanManageRoleFromScope(scope, row.Protected, splitCSVString(row.PermissionKeysCSV))
 	item := &xadmin.PermissionRoleItem{
-		Id:          row.ID,
-		RoleName:    row.RoleName,
-		RoleType:    roleTypeText(row.RoleType),
-		RoleCode:    row.RoleCode,
-		IsProtected: row.Protected,
-		Users:       row.Users,
+		Id:             row.ID,
+		RoleName:       row.RoleName,
+		RoleType:       roleTypeText(row.RoleType),
+		RoleCode:       row.RoleCode,
+		IsProtected:    row.Protected,
+		Users:          row.Users,
+		CanManage:      canManage,
+		CanAssignMenus: scope != nil && scope.SuperAdmin && !isRootAdminRole(row),
 	}
 	if row.UpdatedAt != nil {
 		item.UpdatedAt = timefmt.RFC3339Ptr(row.UpdatedAt)
 	}
 	return item
+}
+
+func splitCSVString(raw string) []string {
+	parts := strings.Split(strings.TrimSpace(raw), ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if value := strings.TrimSpace(part); value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func normalizedDelegable(permissionKey string, requested bool) bool {

@@ -36,6 +36,7 @@
 ## GET /v1/permission/menus/tree
 - 描述：菜单树结构。
 - 鉴权：是。
+- 节点返回 `permission_key/is_delegable`，角色配置抽屉可标识不可委派权限。
 
 ## POST /v1/permission/menus
 - 描述：创建菜单/按钮权限。
@@ -73,6 +74,7 @@
   - 用户与角色的关联仅通过岗位继承生效。
   - `绑定用户数` 统计口径为当前通过岗位继承到该角色的有效用户数。
   - Response 返回稳定的 `role_code` 和 `is_protected`；安全判断不依赖可修改的 `role_name`。
+  - Response 返回 `can_manage/can_assign_menus`，由后端按当前操作者计算；非超管列表会过滤受保护角色。
 
 ## POST /v1/permission/roles
 - 描述：创建角色。

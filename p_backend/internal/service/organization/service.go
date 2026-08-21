@@ -30,15 +30,15 @@ type Service interface {
 	UpdateDepartment(ctx context.Context, req *xadmin.OrganizationUpdateDepartmentReq) (*xadmin.OrganizationActionResp, error)
 	UpdateDepartmentStatus(ctx context.Context, req *xadmin.OrganizationUpdateDepartmentStatusReq) (*xadmin.OrganizationActionResp, error)
 	DeleteDepartment(ctx context.Context, req *xadmin.OrganizationDeleteDepartmentReq) (*xadmin.OrganizationActionResp, error)
-	ListPositions(ctx context.Context, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error)
-	GetPosition(ctx context.Context, req *xadmin.OrganizationPositionDetailReq) (*xadmin.OrganizationPositionItem, error)
+	ListPositions(ctx context.Context, operatorUID int32, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error)
+	GetPosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationPositionDetailReq) (*xadmin.OrganizationPositionItem, error)
 	CreatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error)
 	UpdatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionReq) (*xadmin.OrganizationActionResp, error)
 	UpdatePositionRoles(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionRolesReq) (*xadmin.OrganizationActionResp, error)
 	UpdatePositionStatus(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionStatusReq) (*xadmin.OrganizationActionResp, error)
 	DeletePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationDeletePositionReq) (*xadmin.OrganizationActionResp, error)
 
-	ListUsers(ctx context.Context, req *xadmin.OrganizationUsersReq) (*xadmin.OrganizationUsersResp, error)
+	ListUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUsersReq) (*xadmin.OrganizationUsersResp, error)
 	ListUserSessions(ctx context.Context, req *xadmin.OrganizationUserSessionsReq) (*xadmin.OrganizationUserSessionsResp, error)
 	CreateUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error)
 	UpdateUserProfile(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserProfileReq) (*xadmin.OrganizationActionResp, error)
@@ -56,6 +56,7 @@ type authorizationService interface {
 	EnsureCanManageUser(ctx context.Context, operatorUID, targetUID int32) error
 	EnsureCanAssignPosition(ctx context.Context, operatorUID int32, positionID int64) error
 	EnsureCanManagePosition(ctx context.Context, operatorUID int32, positionID int64) error
+	GetOperatorScope(ctx context.Context, uid int32) (*authorizationsvc.OperatorScope, error)
 }
 
 type service struct {
@@ -208,7 +209,7 @@ func (s *service) DeleteDepartment(ctx context.Context, req *xadmin.Organization
 	return &xadmin.OrganizationActionResp{Success: true, Action: "delete_department"}, nil
 }
 
-func (s *service) ListPositions(ctx context.Context, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error) {
+func (s *service) ListPositions(ctx context.Context, operatorUID int32, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error) {
 	page := req.GetPage()
 	if page == nil {
 		page = &commpb.PageArgs{Pn: 1, Ps: 10}
@@ -223,9 +224,13 @@ func (s *service) ListPositions(ctx context.Context, req *xadmin.OrganizationPos
 	if err != nil {
 		return nil, err
 	}
+	scope, err := s.authorization.GetOperatorScope(ctx, operatorUID)
+	if err != nil {
+		return nil, err
+	}
 	items := make([]*xadmin.OrganizationPositionItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapPositionRow(&row))
+		items = append(items, mapPositionRow(&row, scope))
 	}
 	return &xadmin.OrganizationPositionsResp{
 		Items: items,
@@ -237,12 +242,16 @@ func (s *service) ListPositions(ctx context.Context, req *xadmin.OrganizationPos
 	}, nil
 }
 
-func (s *service) GetPosition(ctx context.Context, req *xadmin.OrganizationPositionDetailReq) (*xadmin.OrganizationPositionItem, error) {
+func (s *service) GetPosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationPositionDetailReq) (*xadmin.OrganizationPositionItem, error) {
 	row, err := s.repo.GetPositionByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return mapPositionRow(row), nil
+	scope, err := s.authorization.GetOperatorScope(ctx, operatorUID)
+	if err != nil {
+		return nil, err
+	}
+	return mapPositionRow(row, scope), nil
 }
 
 func (s *service) CreatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error) {
@@ -352,7 +361,7 @@ func (s *service) DeletePosition(ctx context.Context, operatorUID int32, req *xa
 	return &xadmin.OrganizationActionResp{Success: true, Action: "delete_position"}, nil
 }
 
-func (s *service) ListUsers(ctx context.Context, req *xadmin.OrganizationUsersReq) (*xadmin.OrganizationUsersResp, error) {
+func (s *service) ListUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUsersReq) (*xadmin.OrganizationUsersResp, error) {
 	page := req.GetPage()
 	if page == nil {
 		page = &commpb.PageArgs{Pn: 1, Ps: 10}
@@ -365,6 +374,10 @@ func (s *service) ListUsers(ctx context.Context, req *xadmin.OrganizationUsersRe
 	}
 
 	rows, total, err := s.repo.ListUsers(ctx, page, normalizeSortArgs(req.GetSort()), buildUserFilters(req))
+	if err != nil {
+		return nil, err
+	}
+	scope, err := s.authorization.GetOperatorScope(ctx, operatorUID)
 	if err != nil {
 		return nil, err
 	}
@@ -387,6 +400,8 @@ func (s *service) ListUsers(ctx context.Context, req *xadmin.OrganizationUsersRe
 			PositionId:         row.PositionID,
 			PositionName:       row.PositionName,
 			RoleNames:          parseCSVString(row.RoleNamesCSV),
+			IsProtected:        row.Protected,
+			CanManage:          authorizationsvc.CanManageUserFromScope(scope, row.UID, row.Protected, parseCSVString(row.PermissionKeysCSV)),
 		}
 		if row.LastLoginAt != nil {
 			item.LastLoginAt = timefmt.RFC3339Ptr(row.LastLoginAt)
@@ -419,7 +434,8 @@ func mapDepartmentRow(row *organizationrepo.DepartmentRow) *xadmin.OrganizationD
 	return item
 }
 
-func mapPositionRow(row *organizationrepo.PositionRow) *xadmin.OrganizationPositionItem {
+func mapPositionRow(row *organizationrepo.PositionRow, scope *authorizationsvc.OperatorScope) *xadmin.OrganizationPositionItem {
+	permissionKeys := parseCSVString(row.PermissionKeysCSV)
 	item := &xadmin.OrganizationPositionItem{
 		Id:             row.ID,
 		Name:           row.Name,
@@ -433,6 +449,10 @@ func mapPositionRow(row *organizationrepo.PositionRow) *xadmin.OrganizationPosit
 		Status:         positionStatusText(row.Status),
 		RoleIds:        parseCSVInt64(row.RoleIDsCSV),
 		RoleNames:      parseCSVString(row.RoleNamesCSV),
+		IsProtected:    row.Protected,
+		CanManage:      authorizationsvc.CanManagePositionFromScope(scope, row.ID, row.Protected, permissionKeys),
+		CanAssign:      authorizationsvc.CanAssignPositionFromScope(scope, row.ID, row.Protected, permissionKeys),
+		CanAssignRoles: scope != nil && scope.SuperAdmin,
 	}
 	if row.UpdatedAt != nil {
 		item.UpdatedAt = timefmt.RFC3339Ptr(row.UpdatedAt)

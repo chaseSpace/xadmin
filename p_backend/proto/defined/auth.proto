@@ -123,6 +123,8 @@ message AuthMeProfileResp {
   repeated string menu_routes = 7 [(validate.rules).repeated = {max_items: 500, items: {string: {max_len: 200}}}];
   repeated AuthMenuItem menu_items = 8;
   AuthWarmTip warm_tip = 9;
+  repeated string permission_keys = 10;
+  bool is_super_admin = 11;
 }
 
 message AuthMenuItem {

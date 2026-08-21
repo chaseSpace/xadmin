@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	authorizationsvc "monorepo/internal/service/authorization"
 	xadmin "monorepo/proto/xadminpb"
 )
 
@@ -31,6 +32,10 @@ func (s authorizationStub) EnsureCanAssignPosition(context.Context, int32, int64
 
 func (s authorizationStub) EnsureCanManagePosition(context.Context, int32, int64) error {
 	return s.managePositionErr
+}
+
+func (s authorizationStub) GetOperatorScope(context.Context, int32) (*authorizationsvc.OperatorScope, error) {
+	return &authorizationsvc.OperatorScope{}, nil
 }
 
 func TestPositionRoleBindingRejectsDirectServiceBypass(t *testing.T) {

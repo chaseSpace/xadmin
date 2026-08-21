@@ -105,6 +105,44 @@ func (r *Repo) GetUserByUID(ctx context.Context, uid int32) (*model.AdminUser, e
 	return &user, nil
 }
 
+func (r *Repo) ListEnabledPermissionKeysByUID(ctx context.Context, uid int32) ([]string, error) {
+	if uid <= 0 {
+		return []string{}, nil
+	}
+	keys := make([]string, 0, 32)
+	err := r.db.WithContext(ctx).
+		Table("permission_menu m").
+		Distinct("m.permission_key").
+		Joins("INNER JOIN permission_role_menu prm ON prm.menu_id = m.id").
+		Joins("INNER JOIN permission_role r ON r.id = prm.role_id AND r.deleted_at = 0").
+		Joins("INNER JOIN organization_position_role opr ON opr.role_id = r.id").
+		Joins("INNER JOIN admin_user u ON u.position_id = opr.position_id AND u.deleted_at = 0").
+		Where("u.uid = ? AND m.deleted_at = 0 AND m.status = ? AND m.permission_key <> ''", uid, consts.PermissionStatusEnabled).
+		Order("m.permission_key ASC").
+		Pluck("m.permission_key", &keys).Error
+	if err != nil {
+		return nil, xerr.WrapDBE(err, "list enabled permission keys by uid")
+	}
+	return keys, nil
+}
+
+func (r *Repo) IsSuperAdmin(ctx context.Context, uid int32) (bool, error) {
+	if uid <= 0 {
+		return false, nil
+	}
+	var count int64
+	err := r.db.WithContext(ctx).
+		Table("admin_user u").
+		Joins("INNER JOIN organization_position_role opr ON opr.position_id = u.position_id").
+		Joins("INNER JOIN permission_role r ON r.id = opr.role_id AND r.deleted_at = 0").
+		Where("u.uid = ? AND u.deleted_at = 0 AND r.role_code = ? AND r.is_protected = TRUE", uid, consts.PermissionRoleCodeSuperAdmin).
+		Count(&count).Error
+	if err != nil {
+		return false, xerr.WrapDBE(err, "check super admin")
+	}
+	return count > 0, nil
+}
+
 func (r *Repo) UpdateLoginMeta(ctx context.Context, uid int32, ip string, loginAt time.Time) error {
 	return xerr.WrapDBE(
 		r.db.WithContext(ctx).

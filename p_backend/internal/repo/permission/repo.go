@@ -42,18 +42,20 @@ type MenuRow struct {
 }
 
 type RoleFilters struct {
-	Keyword  string
-	RoleType *int32
+	Keyword          string
+	RoleType         *int32
+	ExcludeProtected bool
 }
 
 type RoleRow struct {
-	ID        int64      `gorm:"column:id"`
-	RoleName  string     `gorm:"column:role_name"`
-	RoleCode  string     `gorm:"column:role_code"`
-	RoleType  int32      `gorm:"column:role_type"`
-	Protected bool       `gorm:"column:is_protected"`
-	Users     int32      `gorm:"column:users"`
-	UpdatedAt *time.Time `gorm:"column:updated_at"`
+	ID                int64      `gorm:"column:id"`
+	RoleName          string     `gorm:"column:role_name"`
+	RoleCode          string     `gorm:"column:role_code"`
+	RoleType          int32      `gorm:"column:role_type"`
+	Protected         bool       `gorm:"column:is_protected"`
+	PermissionKeysCSV string     `gorm:"column:permission_keys_csv"`
+	Users             int32      `gorm:"column:users"`
+	UpdatedAt         *time.Time `gorm:"column:updated_at"`
 }
 
 const roleUsersAggregateJoinSQL = `
@@ -63,6 +65,20 @@ LEFT JOIN (
   INNER JOIN admin_user u ON u.position_id = opr.position_id AND u.deleted_at = 0
   GROUP BY role_id
 ) ru ON ru.role_id = r.id
+`
+
+const rolePermissionsAggregateJoinSQL = `
+LEFT JOIN (
+  SELECT prm.role_id,
+         COALESCE(
+           STRING_AGG(DISTINCT m.permission_key, ',' ORDER BY m.permission_key)
+             FILTER (WHERE m.permission_key <> ''),
+           ''
+         ) AS permission_keys_csv
+  FROM permission_role_menu prm
+  INNER JOIN permission_menu m ON m.id = prm.menu_id AND m.deleted_at = 0 AND m.status = ?
+  GROUP BY prm.role_id
+) rp ON rp.role_id = r.id
 `
 
 func NewRepo() *Repo {
@@ -195,10 +211,12 @@ r.role_name,
 r.role_code,
 r.role_type,
 r.is_protected,
+COALESCE(rp.permission_keys_csv, '') AS permission_keys_csv,
 COALESCE(ru.users, 0) AS users,
 r.updated_at
 `).
 		Joins(roleUsersAggregateJoinSQL).
+		Joins(rolePermissionsAggregateJoinSQL, consts.PermissionStatusEnabled).
 		Where("r.deleted_at = 0")
 	query = applyRoleFilters(query, filters)
 	if len(sort) == 0 {
@@ -228,10 +246,12 @@ r.role_name,
 r.role_code,
 r.role_type,
 r.is_protected,
+COALESCE(rp.permission_keys_csv, '') AS permission_keys_csv,
 COALESCE(ru.users, 0) AS users,
 r.updated_at
 `).
 		Joins(roleUsersAggregateJoinSQL).
+		Joins(rolePermissionsAggregateJoinSQL, consts.PermissionStatusEnabled).
 		Where("r.id = ? AND r.deleted_at = 0", id).
 		First(&row).Error
 	if err != nil {
@@ -439,6 +459,9 @@ func applyRoleFilters(query *gorm.DB, filters RoleFilters) *gorm.DB {
 	}
 	if filters.RoleType != nil {
 		query = query.Where("r.role_type = ?", *filters.RoleType)
+	}
+	if filters.ExcludeProtected {
+		query = query.Where("r.is_protected = FALSE")
 	}
 	return query
 }

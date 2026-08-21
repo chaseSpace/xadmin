@@ -202,6 +202,14 @@ func (s *service) GetMyProfile(ctx context.Context, uid int32) (*xadmin.AuthMePr
 	if err != nil {
 		return nil, err
 	}
+	permissionKeys, err := s.repo.ListEnabledPermissionKeysByUID(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	isSuperAdmin, err := s.repo.IsSuperAdmin(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
 	setting, err := s.repo.GetOrCreatePersonalSetting(ctx, uid)
 	if err != nil {
 		return nil, err
@@ -215,15 +223,17 @@ func (s *service) GetMyProfile(ctx context.Context, uid int32) (*xadmin.AuthMePr
 		return nil, err
 	}
 	return &xadmin.AuthMeProfileResp{
-		Uid:         user.UID,
-		Username:    strings.TrimSpace(user.Username),
-		DisplayName: strings.TrimSpace(user.DisplayName),
-		Avatar:      strings.TrimSpace(user.Avatar),
-		Email:       strings.TrimSpace(user.Email),
-		Phone:       strings.TrimSpace(user.Phone),
-		MenuRoutes:  menuRoutes,
-		MenuItems:   buildAuthMenuTree(menuRows),
-		WarmTip:     buildAuthWarmTip(warmTip),
+		Uid:            user.UID,
+		Username:       strings.TrimSpace(user.Username),
+		DisplayName:    strings.TrimSpace(user.DisplayName),
+		Avatar:         strings.TrimSpace(user.Avatar),
+		Email:          strings.TrimSpace(user.Email),
+		Phone:          strings.TrimSpace(user.Phone),
+		MenuRoutes:     menuRoutes,
+		MenuItems:      buildAuthMenuTree(menuRows),
+		WarmTip:        buildAuthWarmTip(warmTip),
+		PermissionKeys: permissionKeys,
+		IsSuperAdmin:   isSuperAdmin,
 	}, nil
 }
 

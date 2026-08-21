@@ -89,7 +89,7 @@ func (h *Handler) Positions(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.ListPositions(c.UserContext(), req)
+	resp, err := h.svc.ListPositions(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -112,7 +112,7 @@ func (h *Handler) Position(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.GetPosition(c.UserContext(), req)
+	resp, err := h.svc.GetPosition(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -364,7 +364,7 @@ func (h *Handler) Users(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.ListUsers(c.UserContext(), req)
+	resp, err := h.svc.ListUsers(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
