@@ -38,6 +38,7 @@ func resetPermissionRepoTestTables(t *testing.T, db *gorm.DB) {
 			component_path VARCHAR(255) NOT NULL DEFAULT '',
 			menu_type INT NOT NULL,
 			permission_key VARCHAR(128) NOT NULL DEFAULT '',
+			is_delegable BOOLEAN NOT NULL DEFAULT TRUE,
 			sort INT NOT NULL DEFAULT 0,
 			status INT NOT NULL DEFAULT 1,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -47,7 +48,9 @@ func resetPermissionRepoTestTables(t *testing.T, db *gorm.DB) {
 		`CREATE TABLE permission_role (
 			id BIGINT PRIMARY KEY,
 			role_name VARCHAR(64) NOT NULL,
+			role_code VARCHAR(64) NOT NULL DEFAULT '',
 			role_type INT NOT NULL,
+			is_protected BOOLEAN NOT NULL DEFAULT FALSE,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			deleted_at BIGINT NOT NULL DEFAULT 0

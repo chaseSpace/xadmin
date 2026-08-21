@@ -14,7 +14,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type mockOrganizationService struct{}
+type mockOrganizationService struct {
+	lastPositionRolesReq *xadmin.OrganizationUpdatePositionRolesReq
+	lastUserProfileReq   *xadmin.OrganizationUpdateUserProfileReq
+}
 
 func (m *mockOrganizationService) GetDepartmentsTree(ctx context.Context) (*xadmin.OrganizationDepartmentsTreeResp, error) {
 	_ = ctx
@@ -106,26 +109,37 @@ func (m *mockOrganizationService) GetPosition(ctx context.Context, req *xadmin.O
 	}, nil
 }
 
-func (m *mockOrganizationService) CreatePosition(ctx context.Context, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) CreatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "create_position"}, nil
 }
 
-func (m *mockOrganizationService) UpdatePosition(ctx context.Context, req *xadmin.OrganizationUpdatePositionReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) UpdatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "update_position"}, nil
 }
 
-func (m *mockOrganizationService) UpdatePositionStatus(ctx context.Context, req *xadmin.OrganizationUpdatePositionStatusReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) UpdatePositionRoles(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionRolesReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
+	m.lastPositionRolesReq = req
+	return &xadmin.OrganizationActionResp{Success: true, Action: "update_position_roles"}, nil
+}
+
+func (m *mockOrganizationService) UpdatePositionStatus(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionStatusReq) (*xadmin.OrganizationActionResp, error) {
+	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "update_position_status"}, nil
 }
 
-func (m *mockOrganizationService) DeletePosition(ctx context.Context, req *xadmin.OrganizationDeletePositionReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) DeletePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationDeletePositionReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "delete_position"}, nil
 }
@@ -164,38 +178,58 @@ func (m *mockOrganizationService) ListUserSessions(ctx context.Context, req *xad
 	}, nil
 }
 
-func (m *mockOrganizationService) CreateUser(ctx context.Context, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) CreateUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "create_user"}, nil
 }
 
-func (m *mockOrganizationService) UpdateUser(ctx context.Context, req *xadmin.OrganizationUpdateUserReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) UpdateUserProfile(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserProfileReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
-	_ = req
-	return &xadmin.OrganizationActionResp{Success: true, Action: "update_user"}, nil
+	_ = operatorUID
+	m.lastUserProfileReq = req
+	return &xadmin.OrganizationActionResp{Success: true, Action: "update_user_profile"}, nil
 }
 
-func (m *mockOrganizationService) BatchTransferUsers(ctx context.Context, req *xadmin.OrganizationBatchTransferUsersReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) AssignUserPosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationAssignUserPositionReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
+	_ = req
+	return &xadmin.OrganizationActionResp{Success: true, Action: "assign_user_position"}, nil
+}
+
+func (m *mockOrganizationService) UpdateUserStatus(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserStatusReq) (*xadmin.OrganizationActionResp, error) {
+	_ = ctx
+	_ = operatorUID
+	_ = req
+	return &xadmin.OrganizationActionResp{Success: true, Action: "update_user_status"}, nil
+}
+
+func (m *mockOrganizationService) BatchTransferUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationBatchTransferUsersReq) (*xadmin.OrganizationActionResp, error) {
+	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "batch_transfer_users"}, nil
 }
 
-func (m *mockOrganizationService) DeleteUser(ctx context.Context, req *xadmin.OrganizationDeleteUserReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) DeleteUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationDeleteUserReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "delete_user"}, nil
 }
 
-func (m *mockOrganizationService) ResetPassword(ctx context.Context, req *xadmin.OrganizationResetPasswordReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) ResetPassword(ctx context.Context, operatorUID int32, req *xadmin.OrganizationResetPasswordReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "reset_password"}, nil
 }
 
-func (m *mockOrganizationService) ImportUsers(ctx context.Context, req *xadmin.OrganizationImportUsersReq) (*xadmin.OrganizationActionResp, error) {
+func (m *mockOrganizationService) ImportUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationImportUsersReq) (*xadmin.OrganizationActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.OrganizationActionResp{Success: true, Action: "import_users"}, nil
 }
@@ -206,11 +240,11 @@ func (m *mockOrganizationService) ExportUsers(ctx context.Context, req *xadmin.O
 	return []byte("uid,username\n10001,admin\n"), nil
 }
 
-func setupOrganizationApp() *fiber.App {
+func setupOrganizationAppWithMock(svc *mockOrganizationService) *fiber.App {
 	app := fiber.New()
 	v1 := app.Group("/v1")
 
-	handler := organizationhandler.NewHandlerWithService(&mockOrganizationService{})
+	handler := organizationhandler.NewHandlerWithService(svc)
 	group := v1.Group("/organization")
 	authMW := func(c *fiber.Ctx) error {
 		c.Locals(middleware.AuthCtx{}, &middleware.AuthCtx{
@@ -230,6 +264,7 @@ func setupOrganizationApp() *fiber.App {
 	group.Get("/positions/:id", authMW, handler.Position)
 	group.Post("/positions", authMW, handler.CreatePosition)
 	group.Put("/positions/:id", authMW, handler.UpdatePosition)
+	group.Post("/positions/:id/roles", authMW, handler.UpdatePositionRoles)
 	group.Post("/positions/:id/status", authMW, handler.UpdatePositionStatus)
 	group.Delete("/positions/:id", authMW, handler.DeletePosition)
 
@@ -238,11 +273,19 @@ func setupOrganizationApp() *fiber.App {
 	group.Post("/users/import", authMW, handler.ImportUsers)
 	group.Get("/users/export", authMW, handler.ExportUsers)
 	group.Delete("/users/:uid", authMW, handler.DeleteUser)
-	group.Put("/users/:uid", authMW, handler.UpdateUser)
+	group.Put("/users/:uid", authMW, handler.UpdateUserProfile)
+	group.Put("/users/:uid/profile", authMW, handler.UpdateUserProfile)
+	group.Post("/users/:uid/position", authMW, handler.AssignUserPosition)
+	group.Post("/users/:uid/status", authMW, handler.UpdateUserStatus)
 	group.Post("/users/transfer-position", authMW, handler.BatchTransferUsers)
 	group.Post("/users/:uid/reset_password", authMW, handler.ResetPassword)
+	group.Post("/users/:uid/reset-password", authMW, handler.ResetPassword)
 	group.Get("/users/:uid/sessions", authMW, handler.UserSessions)
 	return app
+}
+
+func setupOrganizationApp() *fiber.App {
+	return setupOrganizationAppWithMock(&mockOrganizationService{})
 }
 
 func TestOrganizationDepartmentsTreeAPI(t *testing.T) {
@@ -405,6 +448,20 @@ func TestOrganizationUpdatePositionAPI(t *testing.T) {
 	}
 }
 
+func TestOrganizationUpdatePositionRolesAPI(t *testing.T) {
+	svc := &mockOrganizationService{}
+	app := setupOrganizationAppWithMock(svc)
+	resp := request(t, app, http.MethodPost, "/v1/organization/positions/7/roles", map[string]any{
+		"role_ids": []int64{2, 3},
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status: %d", resp.StatusCode)
+	}
+	if svc.lastPositionRolesReq == nil || svc.lastPositionRolesReq.GetId() != 7 {
+		t.Fatalf("expected position role request with path id, got %+v", svc.lastPositionRolesReq)
+	}
+}
+
 func TestOrganizationUpdatePositionStatusAPI(t *testing.T) {
 	app := setupOrganizationApp()
 	resp := request(t, app, http.MethodPost, "/v1/organization/positions/1/status", map[string]any{
@@ -482,10 +539,12 @@ func TestOrganizationCreateUserAPI(t *testing.T) {
 }
 
 func TestOrganizationUpdateUserAPI(t *testing.T) {
-	app := setupOrganizationApp()
-	resp := request(t, app, http.MethodPut, "/v1/organization/users/10001", map[string]any{
+	svc := &mockOrganizationService{}
+	app := setupOrganizationAppWithMock(svc)
+	resp := request(t, app, http.MethodPut, "/v1/organization/users/10001/profile", map[string]any{
 		"display_name": "新名字",
-		"status":       1,
+		"status":       2,
+		"position_id":  99,
 	})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("unexpected status: %d", resp.StatusCode)
@@ -493,6 +552,26 @@ func TestOrganizationUpdateUserAPI(t *testing.T) {
 	body := decodeJSON(t, resp)
 	if body["code"].(float64) != 200 {
 		t.Fatalf("unexpected code: %v", body["code"])
+	}
+	if svc.lastUserProfileReq == nil || svc.lastUserProfileReq.GetUid() != 10001 {
+		t.Fatalf("expected narrowed profile request with path uid, got %+v", svc.lastUserProfileReq)
+	}
+}
+
+func TestOrganizationUserPrivilegeEndpointsAPI(t *testing.T) {
+	app := setupOrganizationApp()
+	for _, tc := range []struct {
+		path string
+		body map[string]any
+	}{
+		{"/v1/organization/users/10002/position", map[string]any{"department_id": 1, "position_id": 2}},
+		{"/v1/organization/users/10002/status", map[string]any{"status": 0}},
+		{"/v1/organization/users/10002/reset-password", map[string]any{}},
+	} {
+		resp := request(t, app, http.MethodPost, tc.path, tc.body)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s unexpected status: %d", tc.path, resp.StatusCode)
+		}
 	}
 }
 

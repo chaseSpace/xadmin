@@ -13,6 +13,7 @@
 - `GET /v1/organization/positions/:id`
 - `POST /v1/organization/positions`
 - `PUT /v1/organization/positions/:id`
+- `POST /v1/organization/positions/:id/roles`
 - `POST /v1/organization/positions/:id/status`
 - `DELETE /v1/organization/positions/:id`
 
@@ -108,8 +109,10 @@
 - 鉴权：是。
 
 ## POST /v1/organization/positions
-- 描述：创建岗位。
+- 描述：创建岗位基础资料，不绑定角色。
 - 鉴权：是。
+- 权限：`organization.positions.edit_profile`。
+- 约束：请求包含非空 `role_ids` 时拒绝，角色绑定必须使用专用接口。
 
 ### Request Body
 ```json
@@ -124,8 +127,23 @@
 ```
 
 ## PUT /v1/organization/positions/:id
-- 描述：更新岗位基础信息。
+- 描述：更新岗位基础信息，不修改角色。
 - 鉴权：是。
+- 权限：`organization.positions.edit_profile`。
+- 约束：请求包含非空 `role_ids` 时拒绝；非超管只能操作权限范围严格低于自己的非受保护岗位，也不能操作自己所在岗位。
+
+## POST /v1/organization/positions/:id/roles
+- 描述：替换岗位绑定的角色。
+- 鉴权：是。
+- 权限：`organization.positions.assign_roles`，并强制要求稳定角色编码 `super_admin` 对应的超管身份；Service 层会再次校验。
+- 会话：岗位角色与受影响用户会话撤销在同一事务完成，避免旧会话继续使用变更前权限。
+
+### Request Body
+```json
+{
+  "role_ids": [2, 3]
+}
+```
 
 ## POST /v1/organization/positions/:id/status
 - 描述：启用/停用岗位。
@@ -264,13 +282,16 @@
 ## POST /v1/organization/users
 - 描述：创建组织用户。
 - 鉴权：是。
+- 权限：`organization.users.edit_profile`。
 - Request Body 增补：
   - `department_id`（可选）：关联部门 ID。
   - `position_id`（可选）：关联岗位 ID（传入时要求岗位属于部门，且岗位必须为启用状态）。
+- 约束：非超管不能把新用户放入受保护岗位；目标岗位权限必须在操作者的可委派权限范围内。
 
 ## POST /v1/organization/users/transfer-position
 - 描述：批量转移用户岗位。
 - 鉴权：是。
+- 权限：`organization.users.assign_position`。
 
 ### Request Body
 ```json
@@ -280,24 +301,45 @@
   "position_id": "2"
 }
 ```
-- 约束：岗位必须属于所选部门，且岗位必须为启用状态。
+- 约束：岗位必须属于所选部门且为启用状态；非超管不得包含自己、受保护账号或同级/更高权限账号，目标岗位必须处于可委派范围。
+- 会话：调岗和所有目标用户的会话撤销在同一事务完成。
 
-## PUT /v1/organization/users/:uid
-- 描述：编辑组织用户。
+## PUT /v1/organization/users/:uid/profile
+- 描述：仅编辑组织用户资料；兼容路径 `PUT /v1/organization/users/:uid` 使用同一窄请求模型。
 - 鉴权：是。
-- Request Body 增补：
-  - `department_id`（可选）：关联部门 ID。
-  - `position_id`（可选）：关联岗位 ID（传入时要求岗位属于部门；若改到新岗位，岗位必须为启用状态）。
+- 权限：`organization.users.edit_profile`。
+- Request Body：只接受 `display_name/avatar/email/phone`；夹带的 `status/department_id/position_id` 不会进入 Service。
 - 约束：
   - 用户已停用/已注销后，不允许编辑。
-  - 不允许将当前登录账号改为停用或已注销。
+  - 非超管只能操作权限范围严格低于自己的非受保护账号，且不能通过管理接口操作自己。
+
+## POST /v1/organization/users/:uid/position
+- 描述：单用户调岗。
+- 鉴权：是。
+- 权限：`organization.users.assign_position`。
+- Request Body：`department_id/position_id`。
+- 约束：同批量调岗；调岗和目标会话撤销在同一事务完成。
+
+## POST /v1/organization/users/:uid/status
+- 描述：修改用户状态。
+- 鉴权：是。
+- 权限：`organization.users.change_status`。
+- Request Body：`status`（`0` 停用、`1` 启用、`2` 注销）。
+- 约束：非超管不得操作自己、受保护账号或同级/更高权限账号；停用/注销时在同一事务撤销目标会话。
+
+## POST /v1/organization/users/:uid/reset-password
+- 描述：重置目标用户密码；兼容路径 `/reset_password`。
+- 鉴权：是。
+- 权限：`organization.users.reset_password`（不可委派）。
+- 约束：非超管不得操作自己或受保护账号，且目标有效权限必须是操作者有效权限的真子集；同级账号也不允许互相重置。
+- 会话：密码更新与目标会话撤销在同一事务完成。
 
 ## DELETE /v1/organization/users/:uid
 - 描述：软删除组织用户。
 - 鉴权：是。
 - 约束：
   - 仅允许删除状态为“已注销”且已注销满 3 个月的用户。
-  - `admin` 用户不允许删除。
+  - 非超管不得删除自己、受保护账号或同级/更高权限账号；保护判断不依赖用户名。
 
 ### Response 200
 ```json
@@ -312,10 +354,16 @@
 ```
 
 ## 岗位角色关联
-- 位置：岗位新增与编辑接口。
-- 字段：`role_ids`（可选，`int64[]`）。
-- 约束：角色必须存在且未删除。
+- 位置：仅 `POST /v1/organization/positions/:id/roles`。
+- 字段：`role_ids`（`int64[]`）。
+- 约束：角色必须存在且未删除，且该接口属于超管控制面。
 - 岗位列表返回：`role_names`（与 `role_ids` 顺序一致，用于前端展示角色名）。
+
+## 权限目标规则
+- 超管身份由 `permission_role.role_code=super_admin` 且 `is_protected=true` 识别，不比较角色名或用户名。
+- 非超管目标账号/岗位的有效权限必须是操作者有效权限的真子集。
+- 分配岗位时，请求后的岗位权限必须包含于操作者的可委派权限；`permission_menu.is_delegable=false` 的权限不能继续传播。
+- 所有目标校验都在 Service 层执行，不能通过绕过路由或伪造请求直接提权。
 
 ## 停用联动登录限制
 - 当用户状态被改为停用/注销时：

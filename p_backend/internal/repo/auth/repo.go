@@ -260,18 +260,25 @@ func (r *Repo) RevokeOtherSessionsByUID(ctx context.Context, uid int32, keepSess
 	)
 }
 
-func (r *Repo) DeactivateUser(ctx context.Context, uid int32) error {
+func (r *Repo) DeactivateUserAndRevokeSessions(ctx context.Context, uid int32, reason string) error {
 	now := time.Now()
-	return xerr.WrapDBE(
-		r.db.WithContext(ctx).
-			Model(&model.AdminUser{}).
-			Where("uid = ?", uid).
+	return xerr.WrapDBE(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.AdminUser{}).
+			Where("uid = ? AND deleted_at = 0", uid).
 			Updates(map[string]any{
 				"status":         consts.UserStatusDeactivated,
 				"deactivated_at": now,
-			}).Error,
-		"deactivate user",
-	)
+			}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&model.AdminUserSession{}).
+			Where("uid = ? AND status = ?", uid, consts.SessionStatusActive).
+			Updates(map[string]any{
+				"status":         consts.SessionStatusRevoked,
+				"revoked_at":     now,
+				"revoked_reason": reason,
+			}).Error
+	}), "deactivate user and revoke sessions")
 }
 
 func (r *Repo) ListSessionsByUID(ctx context.Context, uid int32, status string, limit int) ([]model.AdminUserSession, error) {

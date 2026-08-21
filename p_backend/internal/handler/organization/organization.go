@@ -44,19 +44,24 @@ func RegisterRoutes(prefix string, parent fiber.Router, authMW fiber.Handler) {
 	group.Delete("/departments/:id", authMW, edit("organization.departments.delete"), handler.DeleteDepartment)
 	group.Get("/positions", authMW, handler.Positions)
 	group.Get("/positions/:id", authMW, handler.Position)
-	group.Post("/positions", authMW, edit("organization.positions.edit"), handler.CreatePosition)
-	group.Put("/positions/:id", authMW, edit("organization.positions.edit"), handler.UpdatePosition)
-	group.Post("/positions/:id/status", authMW, edit("organization.positions.edit"), handler.UpdatePositionStatus)
+	group.Post("/positions", authMW, edit(consts.PermissionPositionsEditProfile), handler.CreatePosition)
+	group.Put("/positions/:id", authMW, edit(consts.PermissionPositionsEditProfile), handler.UpdatePosition)
+	group.Post("/positions/:id/roles", authMW, edit(consts.PermissionPositionsAssignRoles), middleware.RequireSuperAdmin(), handler.UpdatePositionRoles)
+	group.Post("/positions/:id/status", authMW, edit(consts.PermissionPositionsEditProfile), handler.UpdatePositionStatus)
 	group.Delete("/positions/:id", authMW, edit("organization.positions.delete"), handler.DeletePosition)
 
 	group.Get("/users", authMW, handler.Users)
-	group.Post("/users", authMW, edit("organization.users.edit"), handler.CreateUser)
-	group.Post("/users/transfer-position", authMW, edit("organization.users.edit"), handler.BatchTransferUsers)
-	group.Post("/users/import", authMW, edit("organization.users.edit"), handler.ImportUsers)
+	group.Post("/users", authMW, edit(consts.PermissionUsersEditProfile), handler.CreateUser)
+	group.Post("/users/transfer-position", authMW, edit(consts.PermissionUsersAssignPosition), handler.BatchTransferUsers)
+	group.Post("/users/import", authMW, edit(consts.PermissionUsersEditProfile), handler.ImportUsers)
 	group.Get("/users/export", authMW, handler.ExportUsers)
 	group.Delete("/users/:uid", authMW, edit("organization.users.delete"), handler.DeleteUser)
-	group.Put("/users/:uid", authMW, edit("organization.users.edit"), handler.UpdateUser)
-	group.Post("/users/:uid/reset_password", authMW, edit("organization.users.edit"), handler.ResetPassword)
+	group.Put("/users/:uid", authMW, edit(consts.PermissionUsersEditProfile), handler.UpdateUserProfile)
+	group.Put("/users/:uid/profile", authMW, edit(consts.PermissionUsersEditProfile), handler.UpdateUserProfile)
+	group.Post("/users/:uid/position", authMW, edit(consts.PermissionUsersAssignPosition), handler.AssignUserPosition)
+	group.Post("/users/:uid/status", authMW, edit(consts.PermissionUsersChangeStatus), handler.UpdateUserStatus)
+	group.Post("/users/:uid/reset_password", authMW, edit(consts.PermissionUsersResetPassword), handler.ResetPassword)
+	group.Post("/users/:uid/reset-password", authMW, edit(consts.PermissionUsersResetPassword), handler.ResetPassword)
 	group.Get("/users/:uid/sessions", authMW, handler.UserSessions)
 }
 
@@ -130,7 +135,7 @@ func (h *Handler) CreatePosition(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.CreatePosition(c.UserContext(), req)
+	resp, err := h.svc.CreatePosition(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -147,7 +152,24 @@ func (h *Handler) UpdatePosition(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.UpdatePosition(c.UserContext(), req)
+	resp, err := h.svc.UpdatePosition(c.UserContext(), middleware.GetUID(c), req)
+	return xfiber.StdResponse(c, resp, err)
+}
+
+func (h *Handler) UpdatePositionRoles(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(strings.TrimSpace(c.Params("id")), 10, 64)
+	if err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	req := &xadmin.OrganizationUpdatePositionRolesReq{}
+	if err := parseProtoRequest(c, req); err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	req.Id = id
+	if err := req.Validate(); err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	resp, err := h.svc.UpdatePositionRoles(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -172,7 +194,7 @@ func (h *Handler) UpdatePositionStatus(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.UpdatePositionStatus(c.UserContext(), req)
+	resp, err := h.svc.UpdatePositionStatus(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -185,7 +207,7 @@ func (h *Handler) DeletePosition(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.DeletePosition(c.UserContext(), req)
+	resp, err := h.svc.DeletePosition(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -303,7 +325,7 @@ func (h *Handler) BatchTransferUsers(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.BatchTransferUsers(c.UserContext(), req)
+	resp, err := h.svc.BatchTransferUsers(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -364,7 +386,7 @@ func (h *Handler) CreateUser(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.CreateUser(c.UserContext(), req)
+	resp, err := h.svc.CreateUser(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -376,7 +398,7 @@ func (h *Handler) ImportUsers(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.ImportUsers(c.UserContext(), req)
+	resp, err := h.svc.ImportUsers(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -432,25 +454,54 @@ func (h *Handler) ExportUsers(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).Send(data)
 }
 
-func (h *Handler) UpdateUser(c *fiber.Ctx) error {
+func (h *Handler) UpdateUserProfile(c *fiber.Ctx) error {
 	uid, err := strconv.Atoi(strings.TrimSpace(c.Params("uid")))
 	if err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	req := &xadmin.OrganizationUpdateUserReq{}
+	req := &xadmin.OrganizationUpdateUserProfileReq{}
 	if err := parseProtoRequest(c, req); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
 	req.Uid = int32(uid)
-	if authUser := middleware.GetUserEntity(c); authUser != nil && authUser.User != nil {
-		if req.GetUid() == authUser.User.UID && (req.GetStatus() == consts.UserStatusDisabled || req.GetStatus() == consts.UserStatusDeactivated) {
-			return xfiber.StdResponse(c, nil, xerr.NewBiz(xerr.CodeBadRequest, "org.cannot_disable_self"))
-		}
-	}
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.UpdateUser(c.UserContext(), req)
+	resp, err := h.svc.UpdateUserProfile(c.UserContext(), middleware.GetUID(c), req)
+	return xfiber.StdResponse(c, resp, err)
+}
+
+func (h *Handler) AssignUserPosition(c *fiber.Ctx) error {
+	uid, err := strconv.Atoi(strings.TrimSpace(c.Params("uid")))
+	if err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	req := &xadmin.OrganizationAssignUserPositionReq{}
+	if err := parseProtoRequest(c, req); err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	req.Uid = int32(uid)
+	if err := req.Validate(); err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	resp, err := h.svc.AssignUserPosition(c.UserContext(), middleware.GetUID(c), req)
+	return xfiber.StdResponse(c, resp, err)
+}
+
+func (h *Handler) UpdateUserStatus(c *fiber.Ctx) error {
+	uid, err := strconv.Atoi(strings.TrimSpace(c.Params("uid")))
+	if err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	req := &xadmin.OrganizationUpdateUserStatusReq{}
+	if err := parseProtoRequest(c, req); err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	req.Uid = int32(uid)
+	if err := req.Validate(); err != nil {
+		return xfiber.StdResponse(c, nil, err)
+	}
+	resp, err := h.svc.UpdateUserStatus(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -463,7 +514,7 @@ func (h *Handler) DeleteUser(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.DeleteUser(c.UserContext(), req)
+	resp, err := h.svc.DeleteUser(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 
@@ -480,7 +531,7 @@ func (h *Handler) ResetPassword(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.ResetPassword(c.UserContext(), req)
+	resp, err := h.svc.ResetPassword(c.UserContext(), middleware.GetUID(c), req)
 	return xfiber.StdResponse(c, resp, err)
 }
 

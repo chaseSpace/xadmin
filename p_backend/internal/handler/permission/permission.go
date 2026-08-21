@@ -7,6 +7,7 @@ import (
 	"monorepo/internal/middleware"
 	permissionsvc "monorepo/internal/service/permission"
 	"monorepo/internal/support/auditlog"
+	"monorepo/pkg/consts"
 	"monorepo/pkg/xfiber"
 	xadmin "monorepo/proto/xadminpb"
 
@@ -31,23 +32,24 @@ func RegisterRoutes(prefix string, parent fiber.Router, authMW fiber.Handler) {
 	handler := NewHandler()
 	group := parent.Group(prefix, authMW)
 	edit := middleware.RequirePermission
+	superAdmin := middleware.RequireSuperAdmin()
 
 	group.Get("/menus/tree", handler.MenuTree)
 	group.Get("/menus", handler.Menus)
 	group.Get("/menus/:id", handler.Menu)
-	group.Post("/menus", edit("permission.menus.edit"), handler.CreateMenu)
-	group.Put("/menus/:id", edit("permission.menus.edit"), handler.UpdateMenu)
-	group.Post("/menus/:id/status", edit("permission.menus.edit"), handler.UpdateMenuStatus)
-	group.Delete("/menus/:id", edit("permission.menus.delete"), handler.DeleteMenu)
-	group.Post("/menus/sync", edit("permission.menus.edit"), handler.SyncMenus)
+	group.Post("/menus", edit(consts.PermissionMenusManageSchema), superAdmin, handler.CreateMenu)
+	group.Put("/menus/:id", edit(consts.PermissionMenusManageSchema), superAdmin, handler.UpdateMenu)
+	group.Post("/menus/:id/status", edit(consts.PermissionMenusManageSchema), superAdmin, handler.UpdateMenuStatus)
+	group.Delete("/menus/:id", edit(consts.PermissionMenusManageSchema), superAdmin, handler.DeleteMenu)
+	group.Post("/menus/sync", edit(consts.PermissionMenusManageSchema), superAdmin, handler.SyncMenus)
 
 	group.Get("/roles", handler.Roles)
 	group.Get("/roles/:id", handler.Role)
-	group.Post("/roles", edit("permission.roles.edit"), handler.CreateRole)
-	group.Put("/roles/:id", edit("permission.roles.edit"), handler.UpdateRole)
+	group.Post("/roles", edit(consts.PermissionRolesEditProfile), handler.CreateRole)
+	group.Put("/roles/:id", edit(consts.PermissionRolesEditProfile), handler.UpdateRole)
 	group.Delete("/roles/:id", edit("permission.roles.delete"), handler.DeleteRole)
 	group.Get("/roles/:id/menus", handler.RoleMenus)
-	group.Post("/roles/:id/menus", edit("permission.roles.edit"), handler.UpdateRoleMenus)
+	group.Post("/roles/:id/menus", edit(consts.PermissionRolesAssignMenus), superAdmin, handler.UpdateRoleMenus)
 }
 
 func (h *Handler) MenuTree(c *fiber.Ctx) error {
@@ -148,7 +150,7 @@ func (h *Handler) CreateMenu(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.CreateMenu(c.UserContext(), req)
+	resp, err := h.svc.CreateMenu(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -175,7 +177,7 @@ func (h *Handler) UpdateMenu(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.UpdateMenu(c.UserContext(), req)
+	resp, err := h.svc.UpdateMenu(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -203,7 +205,7 @@ func (h *Handler) UpdateMenuStatus(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.UpdateMenuStatus(c.UserContext(), req)
+	resp, err := h.svc.UpdateMenuStatus(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -227,7 +229,7 @@ func (h *Handler) DeleteMenu(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.DeleteMenu(c.UserContext(), req)
+	resp, err := h.svc.DeleteMenu(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -243,7 +245,7 @@ func (h *Handler) DeleteMenu(c *fiber.Ctx) error {
 }
 
 func (h *Handler) SyncMenus(c *fiber.Ctx) error {
-	resp, err := h.svc.SyncMenus(c.UserContext())
+	resp, err := h.svc.SyncMenus(c.UserContext(), middleware.GetUID(c))
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -319,7 +321,7 @@ func (h *Handler) CreateRole(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.CreateRole(c.UserContext(), req)
+	resp, err := h.svc.CreateRole(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),
@@ -346,7 +348,7 @@ func (h *Handler) UpdateRole(c *fiber.Ctx) error {
 	if err := req.Validate(); err != nil {
 		return xfiber.StdResponse(c, nil, err)
 	}
-	resp, err := h.svc.UpdateRole(c.UserContext(), req)
+	resp, err := h.svc.UpdateRole(c.UserContext(), middleware.GetUID(c), req)
 	if err == nil {
 		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
 			UID:       middleware.GetUID(c),

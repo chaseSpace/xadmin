@@ -141,21 +141,6 @@ func (r *Repo) ListSessionsByUID(ctx context.Context, uid int32, status string, 
 	return rows, nil
 }
 
-func (r *Repo) RevokeAllSessionsByUID(ctx context.Context, uid int32, reason string) error {
-	now := time.Now()
-	return xerr.WrapDBE(
-		r.db.WithContext(ctx).
-			Model(&model.AdminUserSession{}).
-			Where("uid = ? AND status = ?", uid, consts.SessionStatusActive).
-			Updates(map[string]any{
-				"status":         consts.SessionStatusRevoked,
-				"revoked_at":     now,
-				"revoked_reason": reason,
-			}).Error,
-		"revoke all user sessions",
-	)
-}
-
 func (r *Repo) RevokeSessionsByDepartmentID(ctx context.Context, departmentID int64, reason string) error {
 	now := time.Now()
 	subQuery := r.db.WithContext(ctx).
@@ -172,25 +157,6 @@ func (r *Repo) RevokeSessionsByDepartmentID(ctx context.Context, departmentID in
 				"revoked_reason": reason,
 			}).Error,
 		"revoke department sessions",
-	)
-}
-
-func (r *Repo) RevokeSessionsByPositionID(ctx context.Context, positionID int64, reason string) error {
-	now := time.Now()
-	subQuery := r.db.WithContext(ctx).
-		Model(&model.AdminUser{}).
-		Select("uid").
-		Where("position_id = ? AND deleted_at = 0", positionID)
-	return xerr.WrapDBE(
-		r.db.WithContext(ctx).
-			Model(&model.AdminUserSession{}).
-			Where("uid IN (?) AND status = ?", subQuery, consts.SessionStatusActive).
-			Updates(map[string]any{
-				"status":         consts.SessionStatusRevoked,
-				"revoked_at":     now,
-				"revoked_reason": reason,
-			}).Error,
-		"revoke position sessions",
 	)
 }
 
@@ -276,20 +242,33 @@ func (r *Repo) UpdateUserByUID(ctx context.Context, uid int32, updates map[strin
 	)
 }
 
-func (r *Repo) BatchUpdateUsersPosition(ctx context.Context, uids []int32, departmentID int64, positionID int64) error {
+func (r *Repo) UpdateUserByUIDAndRevokeSessions(ctx context.Context, uid int32, updates map[string]any, reason string) error {
+	return xerr.WrapDBE(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.AdminUser{}).
+			Where("uid = ? AND deleted_at = 0", uid).
+			Updates(updates).Error; err != nil {
+			return err
+		}
+		return revokeSessionsByUIDs(tx, []int32{uid}, reason)
+	}), "update organization user and revoke sessions")
+}
+
+func (r *Repo) BatchUpdateUsersPosition(ctx context.Context, uids []int32, departmentID int64, positionID int64, reason string) error {
 	if len(uids) == 0 {
 		return nil
 	}
-	return xerr.WrapDBE(
-		r.db.WithContext(ctx).
+	return xerr.WrapDBE(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.
 			Model(&model.AdminUser{}).
 			Where("uid IN ? AND deleted_at = 0", uids).
 			Updates(map[string]any{
 				"department_id": departmentID,
 				"position_id":   positionID,
-			}).Error,
-		"batch transfer organization users",
-	)
+			}).Error; err != nil {
+			return err
+		}
+		return revokeSessionsByUIDs(tx, uids, reason)
+	}), "batch transfer organization users and revoke sessions")
 }
 
 func (r *Repo) SoftDeleteUserByUID(ctx context.Context, uid int32) error {
@@ -557,6 +536,17 @@ func (r *Repo) UpdatePositionByID(ctx context.Context, id int64, updates map[str
 	)
 }
 
+func (r *Repo) UpdatePositionByIDAndRevokeSessions(ctx context.Context, id int64, updates map[string]any, reason string) error {
+	return xerr.WrapDBE(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.OrganizationPosition{}).
+			Where("id = ? AND deleted_at = 0", id).
+			Updates(updates).Error; err != nil {
+			return err
+		}
+		return revokeSessionsByPositionID(tx, id, reason)
+	}), "update position and revoke sessions")
+}
+
 func (r *Repo) SoftDeletePositionByID(ctx context.Context, id int64) error {
 	deletedAt := time.Now().Unix()
 	return xerr.WrapDBE(
@@ -583,26 +573,51 @@ func (r *Repo) CountValidRolesByIDs(ctx context.Context, roleIDs []int64) (int64
 	return count, nil
 }
 
-func (r *Repo) SyncPositionRoles(ctx context.Context, positionID int64, roleIDs []int64) error {
+func (r *Repo) SyncPositionRoles(ctx context.Context, positionID int64, roleIDs []int64, reason string) error {
 	return xerr.WrapDBE(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("position_id = ?", positionID).Delete(&model.OrganizationPositionRole{}).Error; err != nil {
 			return fmt.Errorf("delete position roles: %w", err)
 		}
-		if len(roleIDs) == 0 {
-			return nil
+		if len(roleIDs) > 0 {
+			rows := make([]model.OrganizationPositionRole, 0, len(roleIDs))
+			for _, roleID := range roleIDs {
+				rows = append(rows, model.OrganizationPositionRole{
+					PositionID: positionID,
+					RoleID:     roleID,
+				})
+			}
+			if err := tx.Create(&rows).Error; err != nil {
+				return fmt.Errorf("insert position roles: %w", err)
+			}
 		}
-		rows := make([]model.OrganizationPositionRole, 0, len(roleIDs))
-		for _, roleID := range roleIDs {
-			rows = append(rows, model.OrganizationPositionRole{
-				PositionID: positionID,
-				RoleID:     roleID,
-			})
-		}
-		if err := tx.Create(&rows).Error; err != nil {
-			return fmt.Errorf("insert position roles: %w", err)
-		}
-		return nil
+		return revokeSessionsByPositionID(tx, positionID, reason)
 	}), "sync position roles")
+}
+
+func revokeSessionsByUIDs(tx *gorm.DB, uids []int32, reason string) error {
+	if len(uids) == 0 {
+		return nil
+	}
+	return tx.Model(&model.AdminUserSession{}).
+		Where("uid IN ? AND status = ?", uids, consts.SessionStatusActive).
+		Updates(map[string]any{
+			"status":         consts.SessionStatusRevoked,
+			"revoked_at":     time.Now(),
+			"revoked_reason": reason,
+		}).Error
+}
+
+func revokeSessionsByPositionID(tx *gorm.DB, positionID int64, reason string) error {
+	subQuery := tx.Model(&model.AdminUser{}).
+		Select("uid").
+		Where("position_id = ? AND deleted_at = 0", positionID)
+	return tx.Model(&model.AdminUserSession{}).
+		Where("uid IN (?) AND status = ?", subQuery, consts.SessionStatusActive).
+		Updates(map[string]any{
+			"status":         consts.SessionStatusRevoked,
+			"revoked_at":     time.Now(),
+			"revoked_reason": reason,
+		}).Error
 }
 
 func applyPositionFilters(query *gorm.DB, filters PositionFilters) *gorm.DB {

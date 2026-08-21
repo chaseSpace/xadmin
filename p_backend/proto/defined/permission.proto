@@ -47,6 +47,7 @@ message PermissionMenuItem {
   string updated_at = 10;
   bool deleted = 11;
   string deleted_at = 12;
+  bool is_delegable = 13;
 }
 
 message PermissionMenusResp {
@@ -78,6 +79,7 @@ message PermissionCreateMenuReq {
   PermissionMenuType menu_type = 5;
   string permission_key = 6 [(validate.rules).string = {max_len: 128}];
   int32 sort = 7 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  bool is_delegable = 8;
 }
 
 message PermissionUpdateMenuReq {
@@ -88,6 +90,7 @@ message PermissionUpdateMenuReq {
   PermissionMenuType menu_type = 5;
   string permission_key = 6 [(validate.rules).string = {max_len: 128}];
   int32 sort = 7 [(validate.rules).int32 = {gte: 0, lte: 100000}];
+  bool is_delegable = 8;
 }
 
 message PermissionUpdateMenuStatusReq {
@@ -116,8 +119,10 @@ message PermissionRoleItem {
   int64 id = 1;
   string role_name = 2;
   string role_type = 3;
+  string role_code = 4;
   int32 users = 5;
   string updated_at = 6;
+  bool is_protected = 7;
 }
 
 message PermissionRolesResp {

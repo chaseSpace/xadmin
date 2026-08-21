@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"monorepo/internal/middleware"
 	"monorepo/internal/model"
 	permissionrepo "monorepo/internal/repo/permission"
+	authorizationsvc "monorepo/internal/service/authorization"
 	"monorepo/internal/support/timefmt"
 	"monorepo/pkg/consts"
 	"monorepo/pkg/xerr"
@@ -20,31 +20,37 @@ type Service interface {
 	ListMenus(ctx context.Context, req *xadmin.PermissionMenusReq) (*xadmin.PermissionMenusResp, error)
 	GetMenuTree(ctx context.Context) (*xadmin.PermissionMenuTreeResp, error)
 	GetMenu(ctx context.Context, req *xadmin.PermissionMenuDetailReq) (*xadmin.PermissionMenuItem, error)
-	CreateMenu(ctx context.Context, req *xadmin.PermissionCreateMenuReq) (*xadmin.PermissionActionResp, error)
-	UpdateMenu(ctx context.Context, req *xadmin.PermissionUpdateMenuReq) (*xadmin.PermissionActionResp, error)
-	UpdateMenuStatus(ctx context.Context, req *xadmin.PermissionUpdateMenuStatusReq) (*xadmin.PermissionActionResp, error)
-	DeleteMenu(ctx context.Context, req *xadmin.PermissionDeleteMenuReq) (*xadmin.PermissionActionResp, error)
-	SyncMenus(ctx context.Context) (*xadmin.PermissionActionResp, error)
+	CreateMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateMenuReq) (*xadmin.PermissionActionResp, error)
+	UpdateMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateMenuReq) (*xadmin.PermissionActionResp, error)
+	UpdateMenuStatus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateMenuStatusReq) (*xadmin.PermissionActionResp, error)
+	DeleteMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteMenuReq) (*xadmin.PermissionActionResp, error)
+	SyncMenus(ctx context.Context, operatorUID int32) (*xadmin.PermissionActionResp, error)
 
 	ListRoles(ctx context.Context, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error)
 	GetRole(ctx context.Context, req *xadmin.PermissionRoleDetailReq) (*xadmin.PermissionRoleItem, error)
-	CreateRole(ctx context.Context, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error)
-	UpdateRole(ctx context.Context, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error)
+	CreateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error)
+	UpdateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error)
 	DeleteRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteRoleReq) (*xadmin.PermissionActionResp, error)
 	GetRoleMenus(ctx context.Context, req *xadmin.PermissionRoleMenusReq) (*xadmin.PermissionRoleMenusResp, error)
 	UpdateRoleMenus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error)
 }
 
+type authorizationService interface {
+	EnsureSuperAdmin(ctx context.Context, uid int32) error
+	EnsureCanManageRole(ctx context.Context, operatorUID int32, roleID int64) error
+}
+
 type service struct {
-	repo *permissionrepo.Repo
+	repo          *permissionrepo.Repo
+	authorization authorizationService
 }
 
 func NewService() Service {
-	return &service{repo: permissionrepo.NewRepo()}
+	return &service{repo: permissionrepo.NewRepo(), authorization: authorizationsvc.NewService()}
 }
 
 func NewServiceWithRepo(repo *permissionrepo.Repo) Service {
-	return &service{repo: repo}
+	return &service{repo: repo, authorization: authorizationsvc.NewService()}
 }
 
 func (s *service) ListMenus(ctx context.Context, req *xadmin.PermissionMenusReq) (*xadmin.PermissionMenusResp, error) {
@@ -119,7 +125,10 @@ func (s *service) GetMenu(ctx context.Context, req *xadmin.PermissionMenuDetailR
 	return mapMenuRow(row), nil
 }
 
-func (s *service) CreateMenu(ctx context.Context, req *xadmin.PermissionCreateMenuReq) (*xadmin.PermissionActionResp, error) {
+func (s *service) CreateMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateMenuReq) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
 	if req.GetParentId() > 0 {
 		if _, err := s.repo.GetMenuByID(ctx, req.GetParentId()); err != nil {
 			return nil, err
@@ -129,13 +138,15 @@ func (s *service) CreateMenu(ctx context.Context, req *xadmin.PermissionCreateMe
 	if err != nil {
 		return nil, err
 	}
+	permissionKey := strings.TrimSpace(req.GetPermissionKey())
 	if err := s.repo.CreateMenu(ctx, &model.PermissionMenu{
 		ParentID:      req.GetParentId(),
 		Name:          strings.TrimSpace(req.GetName()),
 		RoutePath:     strings.TrimSpace(req.GetRoutePath()),
 		ComponentPath: strings.TrimSpace(req.GetComponentPath()),
 		MenuType:      menuType,
-		PermissionKey: strings.TrimSpace(req.GetPermissionKey()),
+		PermissionKey: permissionKey,
+		IsDelegable:   normalizedDelegable(permissionKey, req.GetIsDelegable()),
 		Sort:          req.GetSort(),
 		Status:        consts.PermissionStatusEnabled,
 	}); err != nil {
@@ -144,7 +155,10 @@ func (s *service) CreateMenu(ctx context.Context, req *xadmin.PermissionCreateMe
 	return &xadmin.PermissionActionResp{Success: true, Action: "create_menu"}, nil
 }
 
-func (s *service) UpdateMenu(ctx context.Context, req *xadmin.PermissionUpdateMenuReq) (*xadmin.PermissionActionResp, error) {
+func (s *service) UpdateMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateMenuReq) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
 	if _, err := s.repo.GetMenuByID(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
@@ -152,12 +166,14 @@ func (s *service) UpdateMenu(ctx context.Context, req *xadmin.PermissionUpdateMe
 	if err != nil {
 		return nil, err
 	}
+	permissionKey := strings.TrimSpace(req.GetPermissionKey())
 	if err := s.repo.UpdateMenuByID(ctx, req.GetId(), map[string]any{
 		"name":           strings.TrimSpace(req.GetName()),
 		"route_path":     strings.TrimSpace(req.GetRoutePath()),
 		"component_path": strings.TrimSpace(req.GetComponentPath()),
 		"menu_type":      menuType,
-		"permission_key": strings.TrimSpace(req.GetPermissionKey()),
+		"permission_key": permissionKey,
+		"is_delegable":   normalizedDelegable(permissionKey, req.GetIsDelegable()),
 		"sort":           req.GetSort(),
 	}); err != nil {
 		return nil, err
@@ -165,7 +181,10 @@ func (s *service) UpdateMenu(ctx context.Context, req *xadmin.PermissionUpdateMe
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_menu"}, nil
 }
 
-func (s *service) UpdateMenuStatus(ctx context.Context, req *xadmin.PermissionUpdateMenuStatusReq) (*xadmin.PermissionActionResp, error) {
+func (s *service) UpdateMenuStatus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateMenuStatusReq) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
 	if _, err := s.repo.GetMenuByID(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
@@ -179,7 +198,10 @@ func (s *service) UpdateMenuStatus(ctx context.Context, req *xadmin.PermissionUp
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_menu_status"}, nil
 }
 
-func (s *service) DeleteMenu(ctx context.Context, req *xadmin.PermissionDeleteMenuReq) (*xadmin.PermissionActionResp, error) {
+func (s *service) DeleteMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteMenuReq) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
 	row, err := s.repo.GetMenuByIDIncludingDeleted(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -208,7 +230,10 @@ func (s *service) DeleteMenu(ctx context.Context, req *xadmin.PermissionDeleteMe
 	return &xadmin.PermissionActionResp{Success: true, Action: "delete_menu"}, nil
 }
 
-func (s *service) SyncMenus(ctx context.Context) (*xadmin.PermissionActionResp, error) {
+func (s *service) SyncMenus(ctx context.Context, operatorUID int32) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
 	_ = ctx
 	return &xadmin.PermissionActionResp{Success: true, Action: "sync_menus"}, nil
 }
@@ -243,21 +268,30 @@ func (s *service) GetRole(ctx context.Context, req *xadmin.PermissionRoleDetailR
 	return mapRoleRow(row), nil
 }
 
-func (s *service) CreateRole(ctx context.Context, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error) {
+func (s *service) CreateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error) {
 	roleType, err := roleTypeProtoToDB(req.GetRoleType())
 	if err != nil {
 		return nil, err
 	}
+	if roleType == consts.PermissionRoleTypeSystem {
+		if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.repo.CreateRole(ctx, &model.PermissionRole{
-		RoleName: strings.TrimSpace(req.GetRoleName()),
-		RoleType: roleType,
+		RoleName:  strings.TrimSpace(req.GetRoleName()),
+		RoleType:  roleType,
+		Protected: roleType == consts.PermissionRoleTypeSystem,
 	}); err != nil {
 		return nil, err
 	}
 	return &xadmin.PermissionActionResp{Success: true, Action: "create_role"}, nil
 }
 
-func (s *service) UpdateRole(ctx context.Context, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error) {
+func (s *service) UpdateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureCanManageRole(ctx, operatorUID, req.GetId()); err != nil {
+		return nil, err
+	}
 	role, err := s.repo.GetRoleByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -269,9 +303,12 @@ func (s *service) UpdateRole(ctx context.Context, req *xadmin.PermissionUpdateRo
 	if err != nil {
 		return nil, err
 	}
+	if roleType != role.RoleType {
+		return nil, xerr.NewBiz(xerr.CodeBadRequest, "perm.role_type_immutable")
+	}
 	if err := s.repo.UpdateRoleByID(ctx, req.GetId(), map[string]any{
 		"role_name": strings.TrimSpace(req.GetRoleName()),
-		"role_type": roleType,
+		"role_type": role.RoleType,
 	}); err != nil {
 		return nil, err
 	}
@@ -279,6 +316,9 @@ func (s *service) UpdateRole(ctx context.Context, req *xadmin.PermissionUpdateRo
 }
 
 func (s *service) DeleteRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteRoleReq) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureCanManageRole(ctx, operatorUID, req.GetId()); err != nil {
+		return nil, err
+	}
 	role, err := s.repo.GetRoleByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -313,6 +353,9 @@ func (s *service) GetRoleMenus(ctx context.Context, req *xadmin.PermissionRoleMe
 }
 
 func (s *service) UpdateRoleMenus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleMenusReq) (*xadmin.PermissionActionResp, error) {
+	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
 	if operatorUID <= 0 {
 		return nil, xerr.NewBiz(xerr.CodeUnauthorized, "auth.not_logged_in")
 	}
@@ -344,7 +387,6 @@ func (s *service) UpdateRoleMenus(ctx context.Context, operatorUID int32, req *x
 	if err := s.repo.ReplaceRoleMenus(ctx, req.GetRoleId(), menuIDs); err != nil {
 		return nil, err
 	}
-	middleware.InvalidateAllPermissionCache()
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_role_menus"}, nil
 }
 
@@ -375,6 +417,7 @@ func mapMenuRow(row *permissionrepo.MenuRow) *xadmin.PermissionMenuItem {
 		ComponentPath: row.ComponentPath,
 		MenuType:      menuTypeText(row.MenuType),
 		PermissionKey: row.PermissionKey,
+		IsDelegable:   row.IsDelegable,
 		Sort:          row.Sort,
 		Status:        enabledStatusText(row.Status),
 	}
@@ -390,15 +433,33 @@ func mapMenuRow(row *permissionrepo.MenuRow) *xadmin.PermissionMenuItem {
 
 func mapRoleRow(row *permissionrepo.RoleRow) *xadmin.PermissionRoleItem {
 	item := &xadmin.PermissionRoleItem{
-		Id:       row.ID,
-		RoleName: row.RoleName,
-		RoleType: roleTypeText(row.RoleType),
-		Users:    row.Users,
+		Id:          row.ID,
+		RoleName:    row.RoleName,
+		RoleType:    roleTypeText(row.RoleType),
+		RoleCode:    row.RoleCode,
+		IsProtected: row.Protected,
+		Users:       row.Users,
 	}
 	if row.UpdatedAt != nil {
 		item.UpdatedAt = timefmt.RFC3339Ptr(row.UpdatedAt)
 	}
 	return item
+}
+
+func normalizedDelegable(permissionKey string, requested bool) bool {
+	key := strings.TrimSpace(permissionKey)
+	if strings.HasPrefix(key, "permission.") {
+		return false
+	}
+	switch key {
+	case consts.PermissionPositionsAssignRoles,
+		consts.PermissionUsersResetPassword,
+		"system.settings.edit",
+		consts.PermissionMenusManageSchema:
+		return false
+	default:
+		return requested
+	}
 }
 
 func enabledStatusText(status int32) string {
@@ -580,10 +641,7 @@ func buildRoleFilters(req *xadmin.PermissionRolesReq) permissionrepo.RoleFilters
 }
 
 func isRootAdminRole(role *permissionrepo.RoleRow) bool {
-	if role == nil {
-		return false
-	}
-	return role.RoleType == consts.PermissionRoleTypeSystem && strings.TrimSpace(role.RoleName) == "超级管理员"
+	return role != nil && role.Protected && strings.TrimSpace(role.RoleCode) == consts.PermissionRoleCodeSuperAdmin
 }
 
 func isSystemRole(role *permissionrepo.RoleRow) bool {

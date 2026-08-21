@@ -9,6 +9,7 @@ import (
 	"monorepo/config"
 	"monorepo/internal/model"
 	authrepo "monorepo/internal/repo/auth"
+	authorizationsvc "monorepo/internal/service/authorization"
 	"monorepo/internal/support/requestmeta"
 	"monorepo/internal/support/timefmt"
 	"monorepo/pkg/auth"
@@ -30,16 +31,21 @@ type Service interface {
 	IsSessionActive(ctx context.Context, uid int32, sessionID, tokenHash string) (bool, error)
 }
 
+type authorizationService interface {
+	EnsureCanManageUser(ctx context.Context, operatorUID, targetUID int32) error
+}
+
 type service struct {
-	repo *authrepo.Repo
+	repo          *authrepo.Repo
+	authorization authorizationService
 }
 
 func NewService() Service {
-	return &service{repo: authrepo.NewRepo()}
+	return &service{repo: authrepo.NewRepo(), authorization: authorizationsvc.NewService()}
 }
 
 func NewServiceWithRepo(repo *authrepo.Repo) Service {
-	return &service{repo: repo}
+	return &service{repo: repo, authorization: authorizationsvc.NewService()}
 }
 
 func (s *service) Login(ctx context.Context, req *xadmin.AuthLoginReq, ip, userAgent, traceID string) (*xadmin.AuthLoginResp, error) {
@@ -171,15 +177,11 @@ func (s *service) ForceLogout(ctx context.Context, operatorUID int32, req *xadmi
 	if operatorUID <= 0 || targetUID <= 0 {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.target_invalid")
 	}
-	if operatorUID == targetUID {
-		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.cannot_force_logout_self")
-	}
-	targetUser, err := s.repo.GetUserByUID(ctx, targetUID)
-	if err != nil {
+	if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, targetUID); err != nil {
 		return nil, err
 	}
-	if strings.EqualFold(strings.TrimSpace(targetUser.Username), "admin") {
-		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.admin_protected")
+	if _, err := s.repo.GetUserByUID(ctx, targetUID); err != nil {
+		return nil, err
 	}
 	if err := s.repo.RevokeAllSessionsByUID(ctx, targetUID, "force_logout"); err != nil {
 		return nil, err
@@ -196,20 +198,13 @@ func (s *service) Deactivate(ctx context.Context, operatorUID int32, req *xadmin
 	if operatorUID <= 0 || targetUID <= 0 {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.target_invalid")
 	}
-	if operatorUID == targetUID {
-		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.cannot_deactivate_self")
-	}
-	targetUser, err := s.repo.GetUserByUID(ctx, targetUID)
-	if err != nil {
+	if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, targetUID); err != nil {
 		return nil, err
 	}
-	if strings.EqualFold(strings.TrimSpace(targetUser.Username), "admin") {
-		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.admin_protected")
-	}
-	if err := s.repo.DeactivateUser(ctx, targetUID); err != nil {
+	if _, err := s.repo.GetUserByUID(ctx, targetUID); err != nil {
 		return nil, err
 	}
-	if err := s.repo.RevokeAllSessionsByUID(ctx, targetUID, "deactivate"); err != nil {
+	if err := s.repo.DeactivateUserAndRevokeSessions(ctx, targetUID, "deactivate"); err != nil {
 		return nil, err
 	}
 	_ = s.audit(ctx, targetUID, "deactivate", "success", ip, userAgent, traceID, "operator_uid="+int32ToString(operatorUID))

@@ -34,6 +34,7 @@ type MenuRow struct {
 	ComponentPath string     `gorm:"column:component_path"`
 	MenuType      int32      `gorm:"column:menu_type"`
 	PermissionKey string     `gorm:"column:permission_key"`
+	IsDelegable   bool       `gorm:"column:is_delegable"`
 	Sort          int32      `gorm:"column:sort"`
 	Status        int32      `gorm:"column:status"`
 	UpdatedAt     *time.Time `gorm:"column:updated_at"`
@@ -48,7 +49,9 @@ type RoleFilters struct {
 type RoleRow struct {
 	ID        int64      `gorm:"column:id"`
 	RoleName  string     `gorm:"column:role_name"`
+	RoleCode  string     `gorm:"column:role_code"`
 	RoleType  int32      `gorm:"column:role_type"`
+	Protected bool       `gorm:"column:is_protected"`
 	Users     int32      `gorm:"column:users"`
 	UpdatedAt *time.Time `gorm:"column:updated_at"`
 }
@@ -74,7 +77,7 @@ func (r *Repo) ListMenus(ctx context.Context, page *commpb.PageArgs, sort []*com
 	rows := make([]MenuRow, 0, page.GetPs())
 	query := r.db.WithContext(ctx).
 		Table("permission_menu m").
-		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.sort,m.status,m.updated_at,m.deleted_at")
+		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.is_delegable,m.sort,m.status,m.updated_at,m.deleted_at")
 	query = applyMenuFilters(query, filters)
 	if len(sort) == 0 {
 		query = query.Order("m.sort asc, m.id asc")
@@ -97,7 +100,7 @@ func (r *Repo) ListAllMenus(ctx context.Context) ([]MenuRow, error) {
 	rows := make([]MenuRow, 0, 64)
 	err := r.db.WithContext(ctx).
 		Table("permission_menu m").
-		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.sort,m.status,m.updated_at").
+		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.is_delegable,m.sort,m.status,m.updated_at").
 		Where("m.deleted_at = 0").
 		Order("m.sort asc, m.id asc").
 		Find(&rows).Error
@@ -111,7 +114,7 @@ func (r *Repo) GetMenuByID(ctx context.Context, id int64) (*MenuRow, error) {
 	var row MenuRow
 	err := r.db.WithContext(ctx).
 		Table("permission_menu m").
-		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.sort,m.status,m.updated_at,m.deleted_at").
+		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.is_delegable,m.sort,m.status,m.updated_at,m.deleted_at").
 		Where("m.id = ? AND m.deleted_at = 0", id).
 		First(&row).Error
 	if err != nil {
@@ -124,7 +127,7 @@ func (r *Repo) GetMenuByIDIncludingDeleted(ctx context.Context, id int64) (*Menu
 	var row MenuRow
 	err := r.db.WithContext(ctx).
 		Table("permission_menu m").
-		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.sort,m.status,m.updated_at,m.deleted_at").
+		Select("m.id,m.parent_id,m.name,m.route_path,m.component_path,m.menu_type,m.permission_key,m.is_delegable,m.sort,m.status,m.updated_at,m.deleted_at").
 		Where("m.id = ?", id).
 		First(&row).Error
 	if err != nil {
@@ -189,7 +192,9 @@ func (r *Repo) ListRoles(ctx context.Context, page *commpb.PageArgs, sort []*com
 		Select(`
 r.id,
 r.role_name,
+r.role_code,
 r.role_type,
+r.is_protected,
 COALESCE(ru.users, 0) AS users,
 r.updated_at
 `).
@@ -220,7 +225,9 @@ func (r *Repo) GetRoleByID(ctx context.Context, id int64) (*RoleRow, error) {
 		Select(`
 r.id,
 r.role_name,
+r.role_code,
 r.role_type,
+r.is_protected,
 COALESCE(ru.users, 0) AS users,
 r.updated_at
 `).
@@ -362,21 +369,30 @@ func (r *Repo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int
 		if err := tx.Where("role_id = ?", roleID).Delete(&model.PermissionRoleMenu{}).Error; err != nil {
 			return xerr.WrapDBE(err, "clear role menus")
 		}
-		if len(menuIDs) == 0 {
-			return nil
-		}
 		uniqueMenuIDs := normalizeMenuIDs(menuIDs)
-		if len(uniqueMenuIDs) == 0 {
-			return nil
+		if len(uniqueMenuIDs) > 0 {
+			items := make([]*model.PermissionRoleMenu, 0, len(uniqueMenuIDs))
+			for _, menuID := range uniqueMenuIDs {
+				items = append(items, &model.PermissionRoleMenu{RoleID: roleID, MenuID: menuID})
+			}
+			if err := tx.Create(items).Error; err != nil {
+				return xerr.WrapDBE(err, "insert role menus")
+			}
 		}
-		items := make([]*model.PermissionRoleMenu, 0, len(uniqueMenuIDs))
-		for _, menuID := range uniqueMenuIDs {
-			items = append(items, &model.PermissionRoleMenu{RoleID: roleID, MenuID: menuID})
-		}
-		if err := tx.Create(items).Error; err != nil {
-			return xerr.WrapDBE(err, "insert role menus")
-		}
-		return nil
+		subQuery := tx.Table("admin_user u").
+			Select("u.uid").
+			Joins("INNER JOIN organization_position_role opr ON opr.position_id = u.position_id").
+			Where("opr.role_id = ? AND u.deleted_at = 0", roleID)
+		return xerr.WrapDBE(
+			tx.Model(&model.AdminUserSession{}).
+				Where("uid IN (?) AND status = ?", subQuery, consts.SessionStatusActive).
+				Updates(map[string]any{
+					"status":         consts.SessionStatusRevoked,
+					"revoked_at":     time.Now(),
+					"revoked_reason": "role_permissions_changed",
+				}).Error,
+			"revoke sessions affected by role permissions",
+		)
 	})
 }
 

@@ -36,8 +36,8 @@ func RegisterRoutes(prefix string, parent fiber.Router, authMW fiber.Handler) {
 	group.Post("/login", handler.Login)
 	group.Post("/logout", authMW, handler.Logout)
 	group.Post("/logout_others", authMW, handler.LogoutOthers)
-	group.Post("/force_logout", authMW, handler.ForceLogout)
-	group.Post("/deactivate", authMW, handler.Deactivate)
+	group.Post("/force_logout", authMW, middleware.RequirePermission(consts.PermissionUsersChangeStatus), handler.ForceLogout)
+	group.Post("/deactivate", authMW, middleware.RequirePermission(consts.PermissionUsersChangeStatus), handler.Deactivate)
 	group.Get("/sessions", authMW, handler.Sessions)
 }
 

@@ -31,28 +31,33 @@ func (m *mockPermissionService) GetMenu(ctx context.Context, req *xadmin.Permiss
 	_ = ctx
 	return &xadmin.PermissionMenuItem{Id: req.GetId(), Name: "菜单权限", MenuType: "menu", Status: "enabled"}, nil
 }
-func (m *mockPermissionService) CreateMenu(ctx context.Context, req *xadmin.PermissionCreateMenuReq) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) CreateMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateMenuReq) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.PermissionActionResp{Success: true, Action: "create_menu"}, nil
 }
-func (m *mockPermissionService) UpdateMenu(ctx context.Context, req *xadmin.PermissionUpdateMenuReq) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) UpdateMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateMenuReq) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_menu"}, nil
 }
-func (m *mockPermissionService) UpdateMenuStatus(ctx context.Context, req *xadmin.PermissionUpdateMenuStatusReq) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) UpdateMenuStatus(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateMenuStatusReq) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_menu_status"}, nil
 }
-func (m *mockPermissionService) DeleteMenu(ctx context.Context, req *xadmin.PermissionDeleteMenuReq) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) DeleteMenu(ctx context.Context, operatorUID int32, req *xadmin.PermissionDeleteMenuReq) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.PermissionActionResp{Success: true, Action: "delete_menu"}, nil
 }
-func (m *mockPermissionService) SyncMenus(ctx context.Context) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) SyncMenus(ctx context.Context, operatorUID int32) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	return &xadmin.PermissionActionResp{Success: true, Action: "sync_menus"}, nil
 }
 func (m *mockPermissionService) ListRoles(ctx context.Context, req *xadmin.PermissionRolesReq) (*xadmin.PermissionRolesResp, error) {
@@ -64,13 +69,15 @@ func (m *mockPermissionService) GetRole(ctx context.Context, req *xadmin.Permiss
 	_ = ctx
 	return &xadmin.PermissionRoleItem{Id: req.GetId(), RoleName: "超级管理员", RoleType: "system"}, nil
 }
-func (m *mockPermissionService) CreateRole(ctx context.Context, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) CreateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionCreateRoleReq) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.PermissionActionResp{Success: true, Action: "create_role"}, nil
 }
-func (m *mockPermissionService) UpdateRole(ctx context.Context, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error) {
+func (m *mockPermissionService) UpdateRole(ctx context.Context, operatorUID int32, req *xadmin.PermissionUpdateRoleReq) (*xadmin.PermissionActionResp, error) {
 	_ = ctx
+	_ = operatorUID
 	_ = req
 	return &xadmin.PermissionActionResp{Success: true, Action: "update_role"}, nil
 }

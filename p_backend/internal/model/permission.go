@@ -14,6 +14,7 @@ type PermissionMenu struct {
 	ComponentPath string `gorm:"column:component_path"`
 	MenuType      int32  `gorm:"column:menu_type"`
 	PermissionKey string `gorm:"column:permission_key"`
+	IsDelegable   bool   `gorm:"column:is_delegable"`
 	Sort          int32  `gorm:"column:sort"`
 	Status        int32  `gorm:"column:status"`
 	DeletedAt     int64  `gorm:"column:deleted_at"`
@@ -28,7 +29,9 @@ type PermissionRole struct {
 	db.ModelBase
 	ID        int64  `gorm:"column:id"`
 	RoleName  string `gorm:"column:role_name"`
+	RoleCode  string `gorm:"column:role_code"`
 	RoleType  int32  `gorm:"column:role_type"`
+	Protected bool   `gorm:"column:is_protected"`
 	DeletedAt int64  `gorm:"column:deleted_at"`
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"monorepo/internal/model"
 	organizationrepo "monorepo/internal/repo/organization"
+	authorizationsvc "monorepo/internal/service/authorization"
 	"monorepo/internal/support/timefmt"
 	"monorepo/pkg/consts"
 	"monorepo/pkg/xerr"
@@ -31,32 +32,43 @@ type Service interface {
 	DeleteDepartment(ctx context.Context, req *xadmin.OrganizationDeleteDepartmentReq) (*xadmin.OrganizationActionResp, error)
 	ListPositions(ctx context.Context, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error)
 	GetPosition(ctx context.Context, req *xadmin.OrganizationPositionDetailReq) (*xadmin.OrganizationPositionItem, error)
-	CreatePosition(ctx context.Context, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error)
-	UpdatePosition(ctx context.Context, req *xadmin.OrganizationUpdatePositionReq) (*xadmin.OrganizationActionResp, error)
-	UpdatePositionStatus(ctx context.Context, req *xadmin.OrganizationUpdatePositionStatusReq) (*xadmin.OrganizationActionResp, error)
-	DeletePosition(ctx context.Context, req *xadmin.OrganizationDeletePositionReq) (*xadmin.OrganizationActionResp, error)
+	CreatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error)
+	UpdatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionReq) (*xadmin.OrganizationActionResp, error)
+	UpdatePositionRoles(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionRolesReq) (*xadmin.OrganizationActionResp, error)
+	UpdatePositionStatus(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionStatusReq) (*xadmin.OrganizationActionResp, error)
+	DeletePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationDeletePositionReq) (*xadmin.OrganizationActionResp, error)
 
 	ListUsers(ctx context.Context, req *xadmin.OrganizationUsersReq) (*xadmin.OrganizationUsersResp, error)
 	ListUserSessions(ctx context.Context, req *xadmin.OrganizationUserSessionsReq) (*xadmin.OrganizationUserSessionsResp, error)
-	CreateUser(ctx context.Context, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error)
-	UpdateUser(ctx context.Context, req *xadmin.OrganizationUpdateUserReq) (*xadmin.OrganizationActionResp, error)
-	BatchTransferUsers(ctx context.Context, req *xadmin.OrganizationBatchTransferUsersReq) (*xadmin.OrganizationActionResp, error)
-	ResetPassword(ctx context.Context, req *xadmin.OrganizationResetPasswordReq) (*xadmin.OrganizationActionResp, error)
-	DeleteUser(ctx context.Context, req *xadmin.OrganizationDeleteUserReq) (*xadmin.OrganizationActionResp, error)
-	ImportUsers(ctx context.Context, req *xadmin.OrganizationImportUsersReq) (*xadmin.OrganizationActionResp, error)
+	CreateUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error)
+	UpdateUserProfile(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserProfileReq) (*xadmin.OrganizationActionResp, error)
+	AssignUserPosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationAssignUserPositionReq) (*xadmin.OrganizationActionResp, error)
+	UpdateUserStatus(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserStatusReq) (*xadmin.OrganizationActionResp, error)
+	BatchTransferUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationBatchTransferUsersReq) (*xadmin.OrganizationActionResp, error)
+	ResetPassword(ctx context.Context, operatorUID int32, req *xadmin.OrganizationResetPasswordReq) (*xadmin.OrganizationActionResp, error)
+	DeleteUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationDeleteUserReq) (*xadmin.OrganizationActionResp, error)
+	ImportUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationImportUsersReq) (*xadmin.OrganizationActionResp, error)
 	ExportUsers(ctx context.Context, req *xadmin.OrganizationUsersReq) ([]byte, error)
 }
 
+type authorizationService interface {
+	EnsureSuperAdmin(ctx context.Context, uid int32) error
+	EnsureCanManageUser(ctx context.Context, operatorUID, targetUID int32) error
+	EnsureCanAssignPosition(ctx context.Context, operatorUID int32, positionID int64) error
+	EnsureCanManagePosition(ctx context.Context, operatorUID int32, positionID int64) error
+}
+
 type service struct {
-	repo *organizationrepo.Repo
+	repo          *organizationrepo.Repo
+	authorization authorizationService
 }
 
 func NewService() Service {
-	return &service{repo: organizationrepo.NewRepo()}
+	return &service{repo: organizationrepo.NewRepo(), authorization: authorizationsvc.NewService()}
 }
 
 func NewServiceWithRepo(repo *organizationrepo.Repo) Service {
-	return &service{repo: repo}
+	return &service{repo: repo, authorization: authorizationsvc.NewService()}
 }
 
 func (s *service) GetDepartmentsTree(ctx context.Context) (*xadmin.OrganizationDepartmentsTreeResp, error) {
@@ -233,19 +245,12 @@ func (s *service) GetPosition(ctx context.Context, req *xadmin.OrganizationPosit
 	return mapPositionRow(row), nil
 }
 
-func (s *service) CreatePosition(ctx context.Context, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) CreatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error) {
 	if _, err := s.repo.GetDepartmentByID(ctx, req.GetDepartmentId()); err != nil {
 		return nil, err
 	}
-	roleIDs := normalizeRoleIDs(req.GetRoleIds())
-	if len(roleIDs) > 0 {
-		count, err := s.repo.CountValidRolesByIDs(ctx, roleIDs)
-		if err != nil {
-			return nil, err
-		}
-		if count != int64(len(roleIDs)) {
-			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.role_not_found")
-		}
+	if len(req.GetRoleIds()) > 0 {
+		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.dedicated_endpoint_required")
 	}
 	position := &model.OrganizationPosition{
 		Name:         strings.TrimSpace(req.GetName()),
@@ -259,28 +264,22 @@ func (s *service) CreatePosition(ctx context.Context, req *xadmin.OrganizationCr
 	if err := s.repo.CreatePosition(ctx, position); err != nil {
 		return nil, err
 	}
-	if err := s.repo.SyncPositionRoles(ctx, position.ID, roleIDs); err != nil {
-		return nil, err
-	}
+	_ = operatorUID
 	return &xadmin.OrganizationActionResp{Success: true, Action: "create_position"}, nil
 }
 
-func (s *service) UpdatePosition(ctx context.Context, req *xadmin.OrganizationUpdatePositionReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) UpdatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManagePosition(ctx, operatorUID, req.GetId()); err != nil {
+		return nil, err
+	}
 	if _, err := s.repo.GetPositionByID(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
 	if _, err := s.repo.GetDepartmentByID(ctx, req.GetDepartmentId()); err != nil {
 		return nil, err
 	}
-	roleIDs := normalizeRoleIDs(req.GetRoleIds())
-	if len(roleIDs) > 0 {
-		count, err := s.repo.CountValidRolesByIDs(ctx, roleIDs)
-		if err != nil {
-			return nil, err
-		}
-		if count != int64(len(roleIDs)) {
-			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.role_not_found")
-		}
+	if len(req.GetRoleIds()) > 0 {
+		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.dedicated_endpoint_required")
 	}
 	if err := s.repo.UpdatePositionByID(ctx, req.GetId(), map[string]any{
 		"name":          strings.TrimSpace(req.GetName()),
@@ -293,13 +292,36 @@ func (s *service) UpdatePosition(ctx context.Context, req *xadmin.OrganizationUp
 	}); err != nil {
 		return nil, err
 	}
-	if err := s.repo.SyncPositionRoles(ctx, req.GetId(), roleIDs); err != nil {
-		return nil, err
-	}
 	return &xadmin.OrganizationActionResp{Success: true, Action: "update_position"}, nil
 }
 
-func (s *service) UpdatePositionStatus(ctx context.Context, req *xadmin.OrganizationUpdatePositionStatusReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) UpdatePositionRoles(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionRolesReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
+	if _, err := s.repo.GetPositionByID(ctx, req.GetId()); err != nil {
+		return nil, err
+	}
+	roleIDs := normalizeRoleIDs(req.GetRoleIds())
+	if len(roleIDs) > 0 {
+		count, err := s.repo.CountValidRolesByIDs(ctx, roleIDs)
+		if err != nil {
+			return nil, err
+		}
+		if count != int64(len(roleIDs)) {
+			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.role_not_found")
+		}
+	}
+	if err := s.repo.SyncPositionRoles(ctx, req.GetId(), roleIDs, "position_roles_changed"); err != nil {
+		return nil, err
+	}
+	return &xadmin.OrganizationActionResp{Success: true, Action: "update_position_roles"}, nil
+}
+
+func (s *service) UpdatePositionStatus(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionStatusReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManagePosition(ctx, operatorUID, req.GetId()); err != nil {
+		return nil, err
+	}
 	if _, err := s.repo.GetPositionByID(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
@@ -307,20 +329,20 @@ func (s *service) UpdatePositionStatus(ctx context.Context, req *xadmin.Organiza
 	if req.GetEnabled() {
 		status = consts.PositionStatusEnabled
 	}
-	if err := s.repo.UpdatePositionByID(ctx, req.GetId(), map[string]any{
-		"status": status,
-	}); err != nil {
-		return nil, err
-	}
 	if status == consts.PositionStatusDisabled {
-		if err := s.repo.RevokeSessionsByPositionID(ctx, req.GetId(), "position_disabled"); err != nil {
+		if err := s.repo.UpdatePositionByIDAndRevokeSessions(ctx, req.GetId(), map[string]any{"status": status}, "position_disabled"); err != nil {
 			return nil, err
 		}
+	} else if err := s.repo.UpdatePositionByID(ctx, req.GetId(), map[string]any{"status": status}); err != nil {
+		return nil, err
 	}
 	return &xadmin.OrganizationActionResp{Success: true, Action: "update_position_status"}, nil
 }
 
-func (s *service) DeletePosition(ctx context.Context, req *xadmin.OrganizationDeletePositionReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) DeletePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationDeletePositionReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManagePosition(ctx, operatorUID, req.GetId()); err != nil {
+		return nil, err
+	}
 	if _, err := s.repo.GetPositionByID(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
@@ -462,13 +484,16 @@ func (s *service) ListUserSessions(ctx context.Context, req *xadmin.Organization
 	return &xadmin.OrganizationUserSessionsResp{Items: items}, nil
 }
 
-func (s *service) CreateUser(ctx context.Context, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) CreateUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error) {
 	if req.GetDepartmentId() > 0 {
 		if _, err := s.repo.GetDepartmentByID(ctx, req.GetDepartmentId()); err != nil {
 			return nil, err
 		}
 	}
 	if req.GetPositionId() > 0 {
+		if err := s.authorization.EnsureCanAssignPosition(ctx, operatorUID, req.GetPositionId()); err != nil {
+			return nil, err
+		}
 		if req.GetDepartmentId() <= 0 {
 			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_requires_department")
 		}
@@ -507,13 +532,35 @@ func (s *service) CreateUser(ctx context.Context, req *xadmin.OrganizationCreate
 	return &xadmin.OrganizationActionResp{Success: true, Action: "create_user"}, nil
 }
 
-func (s *service) UpdateUser(ctx context.Context, req *xadmin.OrganizationUpdateUserReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) UpdateUserProfile(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserProfileReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, req.GetUid()); err != nil {
+		return nil, err
+	}
 	user, err := s.repo.GetUserByUID(ctx, req.GetUid())
 	if err != nil {
 		return nil, err
 	}
 	if user.Status == consts.UserStatusDeactivated {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.account_deactivated_readonly")
+	}
+	updates := map[string]any{
+		"display_name": strings.TrimSpace(req.GetDisplayName()),
+		"avatar":       strings.TrimSpace(req.GetAvatar()),
+		"email":        strings.TrimSpace(req.GetEmail()),
+		"phone":        strings.TrimSpace(req.GetPhone()),
+	}
+	if err := s.repo.UpdateUserByUID(ctx, req.GetUid(), updates); err != nil {
+		return nil, err
+	}
+	return &xadmin.OrganizationActionResp{Success: true, Action: "update_user_profile"}, nil
+}
+
+func (s *service) AssignUserPosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationAssignUserPositionReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, req.GetUid()); err != nil {
+		return nil, err
+	}
+	if _, err := s.repo.GetUserByUID(ctx, req.GetUid()); err != nil {
+		return nil, err
 	}
 	if req.GetDepartmentId() > 0 {
 		if _, err := s.repo.GetDepartmentByID(ctx, req.GetDepartmentId()); err != nil {
@@ -524,6 +571,9 @@ func (s *service) UpdateUser(ctx context.Context, req *xadmin.OrganizationUpdate
 		if req.GetDepartmentId() <= 0 {
 			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_requires_department")
 		}
+		if err := s.authorization.EnsureCanAssignPosition(ctx, operatorUID, req.GetPositionId()); err != nil {
+			return nil, err
+		}
 		position, err := s.repo.GetPositionByID(ctx, req.GetPositionId())
 		if err != nil {
 			return nil, err
@@ -531,37 +581,54 @@ func (s *service) UpdateUser(ctx context.Context, req *xadmin.OrganizationUpdate
 		if position.DepartmentID != req.GetDepartmentId() {
 			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_not_in_department")
 		}
-		if position.Status != consts.PositionStatusEnabled && position.ID != user.PositionID {
+		if position.Status != consts.PositionStatusEnabled {
 			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_disabled")
 		}
 	}
-
-	updates := map[string]any{
-		"display_name":  strings.TrimSpace(req.GetDisplayName()),
-		"avatar":        strings.TrimSpace(req.GetAvatar()),
-		"email":         strings.TrimSpace(req.GetEmail()),
-		"phone":         strings.TrimSpace(req.GetPhone()),
-		"status":        req.GetStatus(),
+	if err := s.repo.UpdateUserByUIDAndRevokeSessions(ctx, req.GetUid(), map[string]any{
 		"department_id": req.GetDepartmentId(),
 		"position_id":   req.GetPositionId(),
+	}, "user_position_changed"); err != nil {
+		return nil, err
 	}
+	return &xadmin.OrganizationActionResp{Success: true, Action: "assign_user_position"}, nil
+}
+
+func (s *service) UpdateUserStatus(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserStatusReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, req.GetUid()); err != nil {
+		return nil, err
+	}
+	if _, err := s.repo.GetUserByUID(ctx, req.GetUid()); err != nil {
+		return nil, err
+	}
+	updates := map[string]any{"status": req.GetStatus()}
 	if req.GetStatus() == consts.UserStatusDeactivated {
 		updates["deactivated_at"] = time.Now()
 	} else {
 		updates["deactivated_at"] = nil
 	}
-	if err := s.repo.UpdateUserByUID(ctx, req.GetUid(), updates); err != nil {
+	if req.GetStatus() == consts.UserStatusDisabled || req.GetStatus() == consts.UserStatusDeactivated {
+		if err := s.repo.UpdateUserByUIDAndRevokeSessions(ctx, req.GetUid(), updates, "user_disabled_or_deactivated"); err != nil {
+			return nil, err
+		}
+	} else if err := s.repo.UpdateUserByUID(ctx, req.GetUid(), updates); err != nil {
 		return nil, err
 	}
-	if req.GetStatus() == consts.UserStatusDisabled || req.GetStatus() == consts.UserStatusDeactivated {
-		if err := s.repo.RevokeAllSessionsByUID(ctx, req.GetUid(), "user_disabled_or_deactivated"); err != nil {
+	return &xadmin.OrganizationActionResp{Success: true, Action: "update_user_status"}, nil
+}
+
+func (s *service) BatchTransferUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationBatchTransferUsersReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanAssignPosition(ctx, operatorUID, req.GetPositionId()); err != nil {
+		return nil, err
+	}
+	for _, uid := range req.GetUids() {
+		if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, uid); err != nil {
+			return nil, err
+		}
+		if _, err := s.repo.GetUserByUID(ctx, uid); err != nil {
 			return nil, err
 		}
 	}
-	return &xadmin.OrganizationActionResp{Success: true, Action: "update_user"}, nil
-}
-
-func (s *service) BatchTransferUsers(ctx context.Context, req *xadmin.OrganizationBatchTransferUsersReq) (*xadmin.OrganizationActionResp, error) {
 	if _, err := s.repo.GetDepartmentByID(ctx, req.GetDepartmentId()); err != nil {
 		return nil, err
 	}
@@ -575,19 +642,18 @@ func (s *service) BatchTransferUsers(ctx context.Context, req *xadmin.Organizati
 	if position.Status != consts.PositionStatusEnabled {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_disabled")
 	}
-	if err := s.repo.BatchUpdateUsersPosition(ctx, req.GetUids(), req.GetDepartmentId(), req.GetPositionId()); err != nil {
+	if err := s.repo.BatchUpdateUsersPosition(ctx, req.GetUids(), req.GetDepartmentId(), req.GetPositionId(), "user_position_changed"); err != nil {
 		return nil, err
 	}
 	return &xadmin.OrganizationActionResp{Success: true, Action: "batch_transfer_users"}, nil
 }
 
-func (s *service) ResetPassword(ctx context.Context, req *xadmin.OrganizationResetPasswordReq) (*xadmin.OrganizationActionResp, error) {
-	user, err := s.repo.GetUserByUID(ctx, req.GetUid())
-	if err != nil {
+func (s *service) ResetPassword(ctx context.Context, operatorUID int32, req *xadmin.OrganizationResetPasswordReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, req.GetUid()); err != nil {
 		return nil, err
 	}
-	if strings.EqualFold(strings.TrimSpace(user.Username), "admin") {
-		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.admin_no_reset_pwd")
+	if _, err := s.repo.GetUserByUID(ctx, req.GetUid()); err != nil {
+		return nil, err
 	}
 	password, err := generateRandomPassword(12)
 	if err != nil {
@@ -597,12 +663,9 @@ func (s *service) ResetPassword(ctx context.Context, req *xadmin.OrganizationRes
 	if err != nil {
 		return nil, xerr.NewWithError(xerr.CodeInternalError, err, "hash reset password")
 	}
-	if err := s.repo.UpdateUserByUID(ctx, req.GetUid(), map[string]any{
+	if err := s.repo.UpdateUserByUIDAndRevokeSessions(ctx, req.GetUid(), map[string]any{
 		"password_hash": string(hash),
-	}); err != nil {
-		return nil, err
-	}
-	if err := s.repo.RevokeAllSessionsByUID(ctx, req.GetUid(), "reset_password"); err != nil {
+	}, "reset_password"); err != nil {
 		return nil, err
 	}
 	return &xadmin.OrganizationActionResp{
@@ -612,13 +675,13 @@ func (s *service) ResetPassword(ctx context.Context, req *xadmin.OrganizationRes
 	}, nil
 }
 
-func (s *service) DeleteUser(ctx context.Context, req *xadmin.OrganizationDeleteUserReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) DeleteUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationDeleteUserReq) (*xadmin.OrganizationActionResp, error) {
+	if err := s.authorization.EnsureCanManageUser(ctx, operatorUID, req.GetUid()); err != nil {
+		return nil, err
+	}
 	user, err := s.repo.GetUserByUID(ctx, req.GetUid())
 	if err != nil {
 		return nil, err
-	}
-	if strings.EqualFold(strings.TrimSpace(user.Username), "admin") {
-		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.admin_no_delete")
 	}
 	if user.Status != consts.UserStatusDeactivated {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.only_delete_deactivated")
@@ -632,7 +695,7 @@ func (s *service) DeleteUser(ctx context.Context, req *xadmin.OrganizationDelete
 	return &xadmin.OrganizationActionResp{Success: true, Action: "delete_user"}, nil
 }
 
-func (s *service) ImportUsers(ctx context.Context, req *xadmin.OrganizationImportUsersReq) (*xadmin.OrganizationActionResp, error) {
+func (s *service) ImportUsers(ctx context.Context, operatorUID int32, req *xadmin.OrganizationImportUsersReq) (*xadmin.OrganizationActionResp, error) {
 	for _, item := range req.GetItems() {
 		if item == nil {
 			continue
@@ -641,7 +704,7 @@ func (s *service) ImportUsers(ctx context.Context, req *xadmin.OrganizationImpor
 		if password == "" {
 			password = "Reset@123456"
 		}
-		if _, err := s.CreateUser(ctx, &xadmin.OrganizationCreateUserReq{
+		if _, err := s.CreateUser(ctx, operatorUID, &xadmin.OrganizationCreateUserReq{
 			Username:    strings.TrimSpace(item.GetUsername()),
 			Password:    password,
 			DisplayName: strings.TrimSpace(item.GetDisplayName()),

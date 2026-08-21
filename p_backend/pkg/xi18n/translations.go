@@ -7,6 +7,12 @@ func init() {
 	Register("auth.not_logged_in", "未登录", "Not logged in")
 	Register("auth.permission_load_failed", "权限加载失败", "Failed to load permissions")
 	Register("auth.no_permission", "无操作权限", "No permission")
+	Register("auth.superadmin_required", "该操作仅允许超级管理员执行", "This operation requires a super administrator")
+	Register("auth.self_privilege_change_forbidden", "不允许修改自己的岗位、角色或账号状态", "You cannot change your own position, roles, or account status")
+	Register("auth.protected_target", "不允许操作受保护角色或账号", "Protected roles or accounts cannot be managed")
+	Register("auth.target_scope_exceeded", "目标权限范围不低于当前账号，不允许操作", "The target permission scope is not lower than the current account")
+	Register("auth.grant_scope_exceeded", "目标包含当前账号不可委派的权限", "The target contains permissions that the current account cannot delegate")
+	Register("auth.dedicated_endpoint_required", "权限归属字段必须通过专用接口修改", "Permission assignment fields must be changed through the dedicated endpoint")
 	Register("auth.ip_blocked", "当前IP已被限制访问", "Your IP has been blocked")
 	Register("auth.department_disabled", "您所在的部门被停用", "Your department is disabled")
 	Register("auth.position_disabled", "您所在的岗位被停用", "Your position is disabled")
@@ -16,7 +22,6 @@ func init() {
 	Register("auth.params_invalid", "用户或会话参数不合法", "Invalid user or session parameters")
 	Register("auth.target_invalid", "操作者或目标用户无效", "Invalid operator or target user")
 	Register("auth.cannot_force_logout_self", "不能强制下线当前登录账号", "Cannot force logout current account")
-	Register("auth.admin_protected", "admin 用户禁止危险操作", "Dangerous operations not allowed for admin user")
 	Register("auth.cannot_deactivate_self", "不能注销当前登录账号", "Cannot deactivate current account")
 	Register("auth.session_invalid", "会话信息无效", "Invalid session")
 	// organization
@@ -46,6 +51,7 @@ func init() {
 	Register("perm.role_grant_exceeded", "不允许授予当前账号未拥有的权限", "Cannot grant permissions that your account does not have")
 	Register("perm.invalid_menu_type", "菜单类型参数不合法", "Invalid menu type parameter")
 	Register("perm.invalid_role_type", "角色类型参数不合法", "Invalid role type parameter")
+	Register("perm.role_type_immutable", "角色类型不允许修改", "Role type cannot be changed")
 	// system
 	Register("sys.params_required", "请求参数不能为空", "Request parameters cannot be empty")
 	Register("sys.bot_linked", "该机器人已关联场景配置，无法删除", "Bot is linked to scene configs, cannot delete")
