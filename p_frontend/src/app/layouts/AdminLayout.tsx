@@ -21,13 +21,29 @@ import {
   KeyOutlined,
   MinusCircleOutlined,
 } from '@ant-design/icons'
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  horizontalListSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { Alert, Avatar, Breadcrumb, Dropdown, Form, Input, Layout, Menu, Modal, Select, Space, Switch, Tabs, Tooltip, Typography, Watermark, message } from 'antd'
 import type { MenuProps } from 'antd'
 import type { AppTabKey, AppTabItem } from '../../store/pageTabs'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
+import type { ComponentPropsWithRef, ReactElement, ReactNode } from 'react'
 import { HomePage } from '../../pages/HomePage'
 import { OrganizationStructurePage } from '../../pages/organization/OrganizationStructurePage'
 import { OrganizationMembersPage } from '../../pages/organization/OrganizationMembersPage'
@@ -61,6 +77,37 @@ import {
 } from './warmTip'
 
 const { Header, Content, Sider } = Layout
+
+type SortableTabNodeProps = {
+  tabKey: AppTabKey
+  children: ReactElement<ComponentPropsWithRef<'div'>>
+}
+
+function SortableTabNode({ tabKey, children }: SortableTabNodeProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tabKey })
+
+  return cloneElement(children, {
+    ref: setNodeRef,
+    ...attributes,
+    ...listeners,
+    className: [children.props.className, isDragging ? 'is-dragging' : '']
+      .filter(Boolean)
+      .join(' '),
+    style: {
+      ...children.props.style,
+      transform: CSS.Translate.toString(transform),
+      transition,
+      zIndex: isDragging ? 2 : undefined,
+    },
+  })
+}
 
 const ROUTE_MENU_FALLBACK_TITLE: Record<AppTabKey, string> = {
   '/': '概览',
@@ -331,9 +378,14 @@ export function AdminLayout() {
   const resetCurrentUserBackgroundImage = useUiSettingsStore((state) => state.resetCurrentUserBackgroundImage)
   const tabs = usePageTabsStore((state) => state.tabs)
   const touchTab = usePageTabsStore((state) => state.touchTab)
+  const moveTab = usePageTabsStore((state) => state.moveTab)
   const closeTab = usePageTabsStore((state) => state.closeTab)
   const closeOtherTabs = usePageTabsStore((state) => state.closeOtherTabs)
   const resetTabs = usePageTabsStore((state) => state.resetTabs)
+  const tabDragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
   const [messageApi, contextHolder] = message.useMessage()
   const [modalApi, modalContextHolder] = Modal.useModal()
   const [personalSettingsForm] = Form.useForm<{
@@ -483,47 +535,62 @@ export function AdminLayout() {
     }
   }
 
+  const handleTabDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+    const sourceKey = String(active.id) as AppTabKey
+    const targetKey = String(over.id) as AppTabKey
+    const visibleTabKeys = new Set(visibleTabs.map((tab) => tab.key))
+    if (!visibleTabKeys.has(sourceKey) || !visibleTabKeys.has(targetKey)) return
+    moveTab(sourceKey, targetKey)
+  }
+
   const renderTabLabel = (item: AppTabItem) => (
-    <Dropdown
-      trigger={['contextMenu']}
-      menu={{
-        items: [
-          {
-            key: 'close_current',
-            icon: <CloseOutlined />,
-            label: t('关闭当前'),
-            disabled: visibleTabs.length <= 1,
+      <Dropdown
+        trigger={['contextMenu']}
+        menu={{
+          items: [
+            {
+              key: 'close_current',
+              icon: <CloseOutlined />,
+              label: t('关闭当前'),
+              disabled: visibleTabs.length <= 1,
+            },
+            {
+              key: 'close_other',
+              icon: <MinusCircleOutlined />,
+              label: t('关闭其他'),
+              disabled: visibleTabs.length <= 1,
+            },
+            {
+              key: 'close_all',
+              icon: <CloseCircleOutlined />,
+              label: t('关闭全部'),
+            },
+          ],
+          onClick: ({ key, domEvent }) => {
+            domEvent.stopPropagation()
+            if (key === 'close_current') {
+              closeCurrentTab(item.key)
+              return
+            }
+            if (key === 'close_other') {
+              closeOtherVisibleTabs(item.key)
+              return
+            }
+            if (key === 'close_all') {
+              closeAllTabs()
+            }
           },
-          {
-            key: 'close_other',
-            icon: <MinusCircleOutlined />,
-            label: t('关闭其他'),
-            disabled: visibleTabs.length <= 1,
-          },
-          {
-            key: 'close_all',
-            icon: <CloseCircleOutlined />,
-            label: t('关闭全部'),
-          },
-        ],
-        onClick: ({ key, domEvent }) => {
-          domEvent.stopPropagation()
-          if (key === 'close_current') {
-            closeCurrentTab(item.key)
-            return
-          }
-          if (key === 'close_other') {
-            closeOtherVisibleTabs(item.key)
-            return
-          }
-          if (key === 'close_all') {
-            closeAllTabs()
-          }
-        },
-      }}
-    >
-      <span onContextMenu={(event) => event.stopPropagation()}>{t(resolveMenuTitle(item.key, menuTitleMap))}</span>
-    </Dropdown>
+        }}
+      >
+        <span
+          className="admin-panel-tab-label"
+          title={t('拖动调整标签顺序')}
+          onContextMenu={(event) => event.stopPropagation()}
+        >
+          {t(resolveMenuTitle(item.key, menuTitleMap))}
+        </span>
+      </Dropdown>
   )
 
   useEffect(() => {
@@ -893,6 +960,26 @@ export function AdminLayout() {
               const key = targetKey as AppTabKey
               closeCurrentTab(key)
             }}
+            renderTabBar={(tabBarProps, DefaultTabBar) => (
+              <DndContext
+                sensors={tabDragSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleTabDragEnd}
+              >
+                <SortableContext
+                  items={visibleTabs.map((item) => item.key)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <DefaultTabBar {...tabBarProps}>
+                    {(node) => (
+                      <SortableTabNode key={node.key} tabKey={String(node.key) as AppTabKey}>
+                        {node as ReactElement<ComponentPropsWithRef<'div'>>}
+                      </SortableTabNode>
+                    )}
+                  </DefaultTabBar>
+                </SortableContext>
+              </DndContext>
+            )}
             items={visibleTabs.map((item) => ({
               key: item.key,
               label: renderTabLabel(item),

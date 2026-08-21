@@ -398,6 +398,24 @@ body {
   margin-bottom: 0;
 }
 
+.admin-panel-tab-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  user-select: none;
+}
+
+.admin-panel-tabs .ant-tabs-tab {
+  cursor: grab;
+  touch-action: none;
+}
+
+.admin-panel-tabs .ant-tabs-tab.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-brand) 22%, transparent);
+  opacity: 0.94;
+}
+
 .admin-panel-pages {
   --xadmin-page-bottom-gap: 24px;
   flex: 1;

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { message } from 'antd'
 import { useI18nStore } from './i18n'
 import { translateText } from '../i18n/messages'
+import { reorderTabs } from './pageTabOrder'
 
 export type AppTabKey =
   | '/'
@@ -31,6 +32,7 @@ const MAX_TAB_WARNED_KEY = 'xadmin_max_tab_warned'
 type PageTabsState = {
   tabs: AppTabItem[]
   touchTab: (tab: AppTabItem) => void
+  moveTab: (sourceKey: AppTabKey, targetKey: AppTabKey) => void
   closeTab: (key: AppTabKey) => void
   closeOtherTabs: (key: AppTabKey) => void
   resetTabs: () => void
@@ -61,6 +63,9 @@ export const usePageTabsStore = create<PageTabsState>((set) => ({
       }
       return { tabs: nextTabs.slice(nextTabs.length - MAX_TAB_COUNT) }
     })
+  },
+  moveTab: (sourceKey, targetKey) => {
+    set((state) => ({ tabs: reorderTabs(state.tabs, sourceKey, targetKey) }))
   },
   closeTab: (key) => {
     set((state) => ({

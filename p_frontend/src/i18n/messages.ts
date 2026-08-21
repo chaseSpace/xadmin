@@ -150,6 +150,7 @@ const enUsMessages: Record<string, string> = {
   '关闭当前': 'Close Current',
   '关闭其他': 'Close Others',
   '关闭全部': 'Close All',
+  '拖动调整标签顺序': 'Drag to reorder tabs',
   '最多驻留8个标签页，将移除最早打开的标签页': 'Max 8 tabs allowed. The earliest tab will be removed.',
   '已复制': 'Copied',
   '复制失败': 'Copy failed',
