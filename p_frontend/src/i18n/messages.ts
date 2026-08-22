@@ -569,6 +569,8 @@ const enUsMessages: Record<string, string> = {
   '角色名称': 'Role Name',
   '请输入角色名称': 'Enter role name',
   '角色类型': 'Role Type',
+  '普通管理员仅能查看非受保护角色；只有权限范围严格低于自己的自定义角色可以管理。':
+    'Administrators can only view unprotected roles and manage custom roles with strictly fewer permissions.',
   '查询': 'Search',
   '重置': 'Reset',
   '角色ID': 'Role ID',

@@ -139,14 +139,12 @@ SELECT setval(pg_get_serial_sequence('permission_menu', 'id'), GREATEST((SELECT 
 
 INSERT INTO permission_role (id, role_name, role_code, role_type, is_protected) VALUES
 (1, '超级管理员', 'super_admin', 1, TRUE),
-(2, '组织管理员', 'organization_admin', 2, TRUE),
+(2, '组织管理员', 'organization_admin', 2, FALSE),
 (3, '审计员', 'auditor', 1, TRUE),
 (4, '系统运维管理员', 'system_ops_admin', 1, TRUE),
-(5, '安全管理员', 'security_admin', 1, TRUE),
-(6, '业务运营管理员', 'business_ops_admin', 1, TRUE),
 (7, '部门主管', 'department_manager', 1, TRUE),
 (8, '只读观察员', 'readonly_observer', 1, TRUE),
-(9, '普通员工', 'employee', 2, TRUE)
+(9, '普通员工', 'employee', 2, FALSE)
 ON CONFLICT (id) DO UPDATE SET
   role_code = EXCLUDED.role_code,
   is_protected = EXCLUDED.is_protected,
@@ -158,13 +156,10 @@ INSERT INTO permission_role_menu (role_id, menu_id) VALUES
 (2, 1),(2,2),(2,3),(2,4),(2,19),(2,20),(2,21),(2,28),(2,29),(2,30),
 (3, 8),(3,10),(3,11),(3,13),
 (4, 11),(4,12),(4,13),(4,14),(4,17),(4,18),(4,24),(4,25),(4,26),(4,27),(4,33),(4,34),(4,35),
-(5, 8),(5,9),(5,10),(5,11),(5,13),(5,14),(5,22),(5,23),(5,24),(5,33),
-(6, 1),(6,2),(6,3),(6,4),(6,5),(6,6),(6,7),(6,15),(6,16),(6,11),(6,13),(6,19),(6,20),(6,21),(6,36),(6,39),(6,40),(6,41),(6,42),(6,46),
 (7, 1),(7,2),(7,3),(7,4),
 (8, 11),(8,13),
 (1,38),(1,39),(1,40),(1,41),(1,42),(1,43),(1,44),(1,45),(1,46),
-(2,39),(2,40),(2,41),(2,42),(2,46),
-(5,43)
+(2,39),(2,40),(2,41),(2,42),(2,46)
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
 -- 普通员工（role_code=employee）默认不授予后台菜单权限，作为岗位分配的最低权限基线。

@@ -12,7 +12,9 @@ import {
   Tag,
   Tooltip,
   Tree,
+  Typography,
   message,
+  theme,
 } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import type { TablePaginationConfig } from 'antd'
@@ -22,6 +24,7 @@ import { useState } from 'react'
 import type { Key } from 'react'
 import { UiButton } from '../../components/ui'
 import { useI18n } from '../../i18n/messages'
+import { useThemeStore } from '../../store/theme'
 import { useUiSettingsStore } from '../../store/uiSettings'
 import { formatDateTime } from '../../utils/timezone'
 import { useAuthStore } from '../../store/auth'
@@ -63,6 +66,8 @@ function mapTree(nodes: PermissionMenuTreeNode[]): DataNode[] {
 
 export function PermissionRolesPage() {
   const { t } = useI18n()
+  const { token } = theme.useToken()
+  const themeMode = useThemeStore((state) => state.mode)
   const systemTimezone = useUiSettingsStore((state) => state.systemTimezone)
   const [messageApi, contextHolder] = message.useMessage()
   const [modalApi, modalContextHolder] = Modal.useModal()
@@ -92,6 +97,10 @@ export function PermissionRolesPage() {
   const canDeleteRoles = hasPermission(currentUser, permissionKeys.rolesDelete)
   const isRootAdminRole = (role?: PermissionRole | null) =>
     Boolean(role) && role?.roleCode === 'super_admin'
+  const roleVisibilityHintColor =
+    themeMode === 'light'
+      ? `color-mix(in srgb, ${token.colorWarningActive} 55%, ${token.colorErrorActive} 45%)`
+      : token.colorWarningText
 
   const rolesQuery = useQuery({
     queryKey: ['permission-roles', pageNo, pageSize, orderField, orderType, filters, queryTrigger],
@@ -295,6 +304,17 @@ export function PermissionRolesPage() {
               </Space>
             </Form.Item>
           </Form>
+          {!isSuperAdmin ? (
+            <Typography.Text
+              style={{
+                color: roleVisibilityHintColor,
+                display: 'block',
+                marginTop: 8,
+              }}
+            >
+              * {t('普通管理员仅能查看非受保护角色；只有权限范围严格低于自己的自定义角色可以管理。')}
+            </Typography.Text>
+          ) : null}
         </Card>
 
         <Card className="compact-table-card system-table-card table-scroll-region">
