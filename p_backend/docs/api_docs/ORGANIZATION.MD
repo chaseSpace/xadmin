@@ -108,7 +108,7 @@
 ## GET /v1/organization/positions/:id
 - 描述：岗位详情。
 - 鉴权：是。
-- 列表和详情均返回 `is_protected/can_manage/can_assign/can_assign_roles`，这些字段由后端按当前操作者实时计算。
+- 列表和详情均返回只读 `management_rank`，以及 `is_protected/can_manage/can_assign/can_assign_roles`；能力字段由后端按当前操作者实时计算。新增岗位仅允许超管设置非零 `management_rank`，编辑岗位请求不接收该字段。
 
 ## POST /v1/organization/positions
 - 描述：创建岗位基础资料，不绑定角色。
@@ -123,21 +123,24 @@
   "code": "POS-FE",
   "department_id": "1",
   "level": "P5",
+  "management_rank": 60,
   "hc": 5,
   "staffed": 3
 }
 ```
+- `management_rank`：可选，范围 `0~1000`，数值越高管理层级越高；只有超级管理员可以创建非零管理层级岗位，普通管理员省略或传 `0`。
 
 ## PUT /v1/organization/positions/:id
 - 描述：更新岗位基础信息，不修改角色。
 - 鉴权：是。
 - 权限：`organization.positions.edit_profile`。
-- 约束：请求包含非空 `role_ids` 时拒绝；非超管只能操作权限范围严格低于自己的非受保护岗位，也不能操作自己所在岗位。
+- 约束：请求包含非空 `role_ids` 时拒绝；非超管只能操作 `management_rank` 严格低于自己的非受保护岗位，任何人都不能通过普通岗位资料接口操作自己所在岗位。
 
 ## POST /v1/organization/positions/:id/roles
 - 描述：替换岗位绑定的角色。
 - 鉴权：是。
 - 权限：`organization.positions.assign_roles`，并强制要求稳定角色编码 `super_admin` 对应的超管身份；Service 层会再次校验。
+- 约束：即使是超级管理员，也不能修改自己所在岗位的角色关系；列表对自己岗位返回 `can_assign_roles=false`。
 - 会话：岗位角色与受影响用户会话撤销在同一事务完成，避免旧会话继续使用变更前权限。
 
 ### Request Body
@@ -214,7 +217,7 @@
 ```
 - `role_names`：用户岗位关联角色名列表，仅关联查询展示，不在用户创建/编辑接口中直接修改。
 - `is_protected`：目标用户是否继承受保护角色。
-- `can_manage`：当前操作者是否满足非自己、非受保护且目标权限为真子集等 Service 规则；前端所有用户写操作应同时结合自身权限键判断。
+- `can_manage`：当前操作者是否满足非自己、非受保护且目标岗位 `management_rank` 严格更低等 Service 规则；前端所有用户写操作应同时结合自身权限键判断。
 
 ## POST /v1/organization/users/import
 - 描述：导入组织用户（前端解析 CSV 后提交结构化数据）。
@@ -292,7 +295,7 @@
   - `username`：必须以英文字母开头，且只能包含英文字母、数字、下划线和减号，长度 1~64。
   - `department_id`（可选）：关联部门 ID。
   - `position_id`（可选）：关联岗位 ID（传入时要求岗位属于部门；无直属岗位时可属于最近配置了岗位的上级部门，且岗位必须为启用状态）。
-- 约束：非超管不能把新用户放入受保护岗位；目标岗位权限必须在操作者的可委派权限范围内。
+- 约束：非超管不能把新用户放入受保护或同级/更高层级岗位；目标岗位权限还必须在操作者的可委派权限范围内。
 
 ## POST /v1/organization/users/transfer-position
 - 描述：批量转移用户岗位。
@@ -307,7 +310,7 @@
   "position_id": "2"
 }
 ```
-- 约束：岗位必须属于所选部门；无直属岗位时可属于最近配置了岗位的上级部门，且岗位必须为启用状态。非超管不得包含自己、受保护账号或同级/更高权限账号，目标岗位必须处于可委派范围。
+- 约束：岗位必须属于所选部门；无直属岗位时可属于最近配置了岗位的上级部门，且岗位必须为启用状态。非超管不得包含自己、受保护账号或同级/更高管理层级账号；目标岗位管理层级必须更低，且权限必须处于可委派范围。
 - 会话：调岗和所有目标用户的会话撤销在同一事务完成。
 
 ## PUT /v1/organization/users/:uid/profile
@@ -317,7 +320,7 @@
 - Request Body：只接受 `display_name/avatar/email/phone`；夹带的 `status/department_id/position_id` 不会进入 Service。
 - 约束：
   - 用户已停用/已注销后，不允许编辑。
-  - 非超管只能操作权限范围严格低于自己的非受保护账号，且不能通过管理接口操作自己。
+  - 非超管只能操作岗位管理层级严格低于自己的非受保护账号，且不能通过管理接口操作自己。
 
 ## POST /v1/organization/users/:uid/position
 - 描述：单用户调岗。
@@ -331,13 +334,13 @@
 - 鉴权：是。
 - 权限：`organization.users.change_status`。
 - Request Body：`status`（`0` 停用、`1` 启用、`2` 注销）。
-- 约束：非超管不得操作自己、受保护账号或同级/更高权限账号；停用/注销时在同一事务撤销目标会话。
+- 约束：非超管不得操作自己、受保护账号或同级/更高管理层级账号；停用/注销时在同一事务撤销目标会话。
 
 ## POST /v1/organization/users/:uid/reset-password
 - 描述：重置目标用户密码；兼容路径 `/reset_password`。
 - 鉴权：是。
 - 权限：`organization.users.reset_password`（不可委派）。
-- 约束：非超管不得操作自己或受保护账号，且目标有效权限必须是操作者有效权限的真子集；同级账号也不允许互相重置。
+- 约束：非超管不得操作自己、受保护账号或同级/更高管理层级账号；业务权限域不再参与目标用户层级比较。
 - 会话：密码更新与目标会话撤销在同一事务完成。
 
 ## DELETE /v1/organization/users/:uid
@@ -345,7 +348,7 @@
 - 鉴权：是。
 - 约束：
   - 仅允许删除状态为“已注销”且已注销满 3 个月的用户。
-  - 非超管不得删除自己、受保护账号或同级/更高权限账号；保护判断不依赖用户名。
+  - 非超管不得删除自己、受保护账号或同级/更高管理层级账号；保护判断不依赖用户名。
 
 ### Response 200
 ```json
@@ -367,8 +370,11 @@
 
 ## 权限目标规则
 - 超管身份由 `permission_role.role_code=super_admin` 且 `is_protected=true` 识别，不比较角色名或用户名。
-- 非超管目标账号/岗位的有效权限必须是操作者有效权限的真子集。
-- 分配岗位时，请求后的岗位权限必须包含于操作者的可委派权限；`permission_menu.is_delegable=false` 的权限不能继续传播。
+- 用户和岗位的组织管理权由 `organization_position.management_rank` 判断；非超管只能管理严格更低层级的非受保护目标，同级之间不能互相管理。
+- 业务权限只控制操作者能否执行某类动作，不再用于比较用户或岗位的组织管理层级。
+- 分配岗位时，目标岗位层级必须严格更低，且岗位权限必须包含于操作者的可委派权限；`permission_menu.is_delegable=false` 的权限不能继续传播。
+- 角色资料管理仍使用角色保护属性和权限范围比较；岗位绑角色、角色绑菜单、菜单定义仍是超管控制面。
+- `management_rank` 是受控安全属性；岗位列表和详情只读展示，原始初始化 SQL 和超级管理员新增岗位时可以设置。普通管理员只能创建层级 0 岗位，岗位编辑请求不能修改该字段。
 - 所有目标校验都在 Service 层执行，不能通过绕过路由或伪造请求直接提权。
 
 ## 停用联动登录限制

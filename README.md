@@ -6,7 +6,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go" alt="Go">
   <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" alt="React">
-  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript" alt="TypeScript">
+  <img src="https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Ant%20Design-5-0170FE?logo=antdesign" alt="Ant Design">
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-3+-DC382D?logo=redis" alt="Redis">
@@ -29,34 +29,49 @@
 
 ### 🔐 认证与安全
 
-- JWT Token 认证，支持多设备会话管理
+- JWT Token + 数据库会话，支持多设备登录、注销其他会话和管理员强制下线
+- 用户、部门、岗位、角色或密码变化后实时撤销受影响会话
+- 账号级单点登录设置与登录审计
 - IP 黑名单（支持 CIDR 段封禁）
 - 操作审计日志（含 IP 归属地解析）
 - HTTPS 自动证书签发（ACME / Let's Encrypt）
 
 ### 👥 组织架构
 
-- 多级部门树形管理
-- 岗位管理
-- 用户管理（支持批量操作）
+- 多级部门树形管理，成员数与岗位数实时统计
+- 岗位管理：岗位角色、编制/在岗人数、保护状态和管理层级
+- 用户管理：资料、调岗、状态、密码重置、会话查看、CSV 导入导出及批量转岗
+- 用户个人资料返回所属部门、岗位和关联角色
 
 ### 🛡️ 权限体系
 
-- RBAC 角色权限模型（用户 → 岗位 → 角色 → 权限）
-- 细粒度 API 权限拦截（基于 permission_key）
-- 前端动态菜单与路由守卫
+- RBAC 岗位继承模型：`用户 → 岗位 → 角色 → 菜单/API 权限`
+- 三轴权限判断，避免把业务能力与组织层级混为一谈：
+  - **动作权限**：使用稳定的 `permission_key` 判断能否调用功能或接口
+  - **目标管理权**：使用岗位 `management_rank` 判断能否管理目标用户或岗位；仅允许向下管理，同级之间不可互相管理
+  - **权限委派权**：使用 `is_delegable` 与权限子集限制岗位分配，防止管理员向下授予自己没有或不可继续授予的敏感权限
+- 受保护角色与目标：岗位绑定受保护角色后，该岗位及其用户只能由超级管理员操作
+- 超管控制面：岗位绑定角色、角色绑定菜单、菜单权限定义同时执行路由中间件与 Service 二次校验
+- 防自提权：禁止通过管理接口操作自己或自己所在岗位；普通管理员不能创建非零管理层级岗位
+- 能力字段契约：用户、岗位和角色列表由后端实时返回 `can_manage`、`can_assign` 等结果，前端只负责展示，写接口会重新校验数据库状态
+- 岗位管理页只读展示管理层级；超级管理员可在新增岗位时设置层级，存量岗位暂不开放层级编辑
+- 前端动态菜单、路由守卫及按钮级权限展示，后端始终作为最终安全边界
+
+完整的数据模型、判断公式、安全不变量、迁移方案和测试矩阵见：[权限体系与管理权分离设计](p_backend/docs/design_docs/PERMISSION.MD)。
 
 ### 📁 资源管理
 
-- 文件上传与管理（图片 / 语音 / 视频 / 文档 / 压缩包）
-- 本地存储
+- 文件上传、检查、访问统计、资料编辑与删除
+- 图片 / 语音 / 视频 / 文档 / 压缩包等文件分类
+- 可配置的本地存储目录
 
 ### ⚙️ 系统管理
 
 - 系统设置（站点信息、时区等）
 - 关怀提示（登录后公告）
-- 告警机器人（Webhook 通知）
-- 操作审计（请求追踪、TraceID 筛选）
+- 告警机器人、通知场景、消息模板与测试发送
+- IP 黑名单导入、批量解封和创建人筛选
+- 操作审计、保留策略、请求追踪和 TraceID 筛选
 
 ### 🌐 国际化
 
@@ -69,8 +84,8 @@
 
 | 层级        | 技术                                                                                                           |
 |-----------|--------------------------------------------------------------------------------------------------------------|
-| **前端**    | React 18 · TypeScript · Vite · Ant Design · TanStack Query · TanStack Router · Zustand · Zod · Framer Motion |
-| **后端**    | Go · Fiber · GORM · Protobuf · JWT · Zap · Viper · CertMagic                                                 |
+| **前端**    | React 18 · TypeScript 6 · Vite 8 · Ant Design 5 · TanStack Query · TanStack Router · Zustand · Zod · Framer Motion |
+| **后端**    | Go 1.25 · Fiber · GORM · Protobuf · JWT · Zap · Viper · CertMagic                                                |
 | **数据库**   | PostgreSQL · Redis                                                                                           |
 | **工具链**   | pnpm · ESLint · Prettier · Husky · Commitlint · Vitest · Storybook                                           |
 
@@ -78,6 +93,7 @@
 
 - 📖 [前端开发规范](p_frontend/AGENTS.MD)
 - 📖 [后端开发规范](p_backend/AGENTS.MD)
+- 📖 [组织管理 API](p_backend/docs/api_docs/ORGANIZATION.MD)
 
 ---
 
@@ -126,8 +142,8 @@ xadmin/
 
 ### 环境要求
 
-- Go 1.25+
-- Node.js 22+（见 `p_frontend/.nvmrc`）
+- Go 1.25.6+
+- Node.js 24（见 `p_frontend/.nvmrc`）
 - pnpm 10+
 - PostgreSQL 16+
 - Redis 3+
@@ -214,10 +230,11 @@ make up ENV=dev
 ### 后端
 
 ```bash
-make up         # 启动开发服务器
+make up ENV=dev         # 拉取代码、生成 Proto、构建并重启开发服务
 make build ENV=prod     # 编译到 zzz/xadmin_prod
-make verify             # 全量校验（fmt + test + vet + docs）
-make verify-fast        # 快速校验
+make fmt                # 格式化 Go 代码
+make test               # 运行 Go 测试
+make vet                # 运行 Go 静态检查
 make pb                 # 生成 Protobuf 代码
 make execsql ENV=dev    # 执行数据库 SQL
 make showtable TABLE=xx # 查看表结构
@@ -227,7 +244,9 @@ make showtable TABLE=xx # 查看表结构
 
 ```bash
 pnpm dev                # 启动开发服务器
-pnpm build              # 启动生产构建
+pnpm typecheck          # TypeScript 类型检查
+pnpm test               # Vitest 测试
+pnpm build              # TypeScript 构建 + Vite 生产构建
 make up ENV=prod        # 部署服务器执行：一键完成代码拉取、安装、构建并部署到 Nginx
 make deploy             # 不编译，仅部署（dev环境不执行）
 pnpm check:all          # 全量检查（lint + typecheck + test + build）
