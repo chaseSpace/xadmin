@@ -10,18 +10,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_position_role ON organization_position_role
 CREATE INDEX IF NOT EXISTS idx_organization_position_role_position_id ON organization_position_role (position_id);
 CREATE INDEX IF NOT EXISTS idx_organization_position_role_role_id ON organization_position_role (role_id);
 
+TRUNCATE organization_position_role;
 INSERT INTO organization_position_role (position_id, role_id)
 SELECT p.id, r.id
 FROM organization_position p
 JOIN (
   VALUES
     ('POS-CEO', 'super_admin'),
-    ('POS-CEO', 'department_manager'),
     ('POS-HR-MANAGER', 'organization_admin'),
     ('POS-HR-MANAGER', 'department_manager'),
     ('POS-TECH-MANAGER', 'department_manager'),
     ('POS-BACKEND-ENGINEER', 'employee'),
-    ('POS-PRODUCT-OPS-MANAGER', 'employee'),
     ('POS-PRODUCT-OPS-MANAGER', 'department_manager'),
     ('POS-USER-OPS', 'employee'),
     ('POS-RISK-SPECIALIST', 'auditor'),
