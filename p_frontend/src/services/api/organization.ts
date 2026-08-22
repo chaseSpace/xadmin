@@ -478,6 +478,7 @@ type OrganizationPositionApiItem = {
   department_id: number | string
   department_name: string
   level: string
+  management_rank?: number | string
   hc: number | string
   staffed: number | string
   related_count?: number | string
@@ -517,6 +518,7 @@ export type OrganizationPosition = {
   departmentId: number
   departmentName: string
   level: string
+  managementRank: number
   hc: number
   staffed: number
   relatedCount: number
@@ -550,6 +552,7 @@ export type CreateOrganizationPositionPayload = {
   code: string
   departmentId: number
   level: string
+  managementRank?: number
   hc: number
   staffed: number
 }
@@ -567,6 +570,7 @@ export type UpdateOrganizationPositionPayload = {
 function mapPositionItem(item: OrganizationPositionApiItem): OrganizationPosition {
   const id = Number(item.id)
   const departmentId = Number(item.department_id)
+  const managementRank = Number(item.management_rank)
   const hc = Number(item.hc)
   const staffed = Number(item.staffed)
   const relatedCount = Number(item.related_count)
@@ -577,6 +581,7 @@ function mapPositionItem(item: OrganizationPositionApiItem): OrganizationPositio
     departmentId: Number.isFinite(departmentId) ? departmentId : 0,
     departmentName: item.department_name,
     level: item.level,
+    managementRank: Number.isFinite(managementRank) ? managementRank : 0,
     hc: Number.isFinite(hc) ? hc : 0,
     staffed: Number.isFinite(staffed) ? staffed : 0,
     relatedCount: Number.isFinite(relatedCount) ? relatedCount : Number.isFinite(hc) ? hc : 0,
@@ -641,6 +646,7 @@ export async function createOrganizationPosition(
     code: payload.code,
     department_id: payload.departmentId,
     level: payload.level,
+    management_rank: payload.managementRank ?? 0,
     hc: payload.hc,
     staffed: payload.staffed,
   })

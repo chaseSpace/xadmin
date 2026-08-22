@@ -44,6 +44,7 @@ type PositionFormValues = {
   code: string
   departmentId: number
   level: string
+  managementRank?: number
   hc: number
   staffed: number
   status: 'enabled' | 'disabled'
@@ -153,6 +154,7 @@ export function OrganizationPositionsPage() {
           code: values.code.trim(),
           departmentId: values.departmentId,
           level: values.level.trim(),
+          managementRank: values.managementRank ?? 0,
           hc: values.hc,
           staffed: values.staffed,
         })
@@ -228,14 +230,11 @@ export function OrganizationPositionsPage() {
     await departmentsQuery.refetch()
     setEditorMode('create')
     setSelected(null)
+    positionForm.resetFields()
     positionForm.setFieldsValue({
       name: '',
       code: '',
-      departmentId: undefined,
       level: '',
-      hc: 1,
-      staffed: 0,
-      status: 'enabled',
     })
     setFormOpen(true)
   }
@@ -473,13 +472,46 @@ export function OrganizationPositionsPage() {
                   </Space>
                 ),
               },
-              { title: t('岗位编码'), dataIndex: 'code' },
+              {
+                title: (
+                  <Space size={4}>
+                    {t('岗位编码')}
+                    <Tooltip title={t('岗位的稳定唯一标识，用于系统关联，例如 POS-TECH-MANAGER')}>
+                      <QuestionCircleOutlined />
+                    </Tooltip>
+                  </Space>
+                ),
+                dataIndex: 'code',
+              },
               { title: t('所属部门'), dataIndex: 'departmentName' },
               {
                 title: t('绑定角色'),
                 render: (_, row) => <RoleSummary roleNames={row.roleNames} roleIds={row.roleIds} />,
               },
-              { title: t('职级'), dataIndex: 'level', sorter: true },
+              {
+                title: (
+                  <Space size={4}>
+                    {t('职级')}
+                    <Tooltip title={t('用于展示岗位职级，例如 P3、M2；不参与权限或管理层级判断')}>
+                      <QuestionCircleOutlined />
+                    </Tooltip>
+                  </Space>
+                ),
+                dataIndex: 'level',
+                sorter: true,
+              },
+              {
+                title: (
+                  <Space size={4}>
+                    {t('管理层级')}
+                    <Tooltip title={t('数值越高，可管理的岗位层级越高；同级不可互相管理')}>
+                      <QuestionCircleOutlined />
+                    </Tooltip>
+                  </Space>
+                ),
+                dataIndex: 'managementRank',
+                align: 'center',
+              },
               {
                 title: (
                   <Space size={4}>
@@ -574,29 +606,73 @@ export function OrganizationPositionsPage() {
             name="name"
             rules={[{ required: true, message: t('请输入岗位名称') }]}
           >
-            <Input maxLength={64} />
+            <Input maxLength={64} placeholder={t('例如 后端工程师')} />
           </Form.Item>
           <Form.Item
-            label={t('岗位编码')}
+            label={
+              <Space size={4}>
+                {t('岗位编码')}
+                <Tooltip title={t('岗位的稳定唯一标识，用于系统关联，例如 POS-TECH-MANAGER')}>
+                  <QuestionCircleOutlined />
+                </Tooltip>
+              </Space>
+            }
             name="code"
             rules={[{ required: true, message: t('请输入岗位编码') }]}
           >
-            <Input maxLength={64} />
+            <Input maxLength={64} placeholder={t('例如 POS-BACKEND-ENGINEER')} />
           </Form.Item>
           <Form.Item
             label={t('所属部门')}
             name="departmentId"
             rules={[{ required: true, message: t('请选择所属部门') }]}
           >
-            <Select options={departmentFormOptions} loading={departmentsQuery.isLoading} />
+            <Select
+              placeholder={t('例如 技术部')}
+              options={departmentFormOptions}
+              loading={departmentsQuery.isLoading}
+            />
           </Form.Item>
           <Form.Item
-            label={t('职级')}
+            label={
+              <Space size={4}>
+                {t('职级')}
+                <Tooltip title={t('用于展示岗位职级，例如 P3、M2；不参与权限或管理层级判断')}>
+                  <QuestionCircleOutlined />
+                </Tooltip>
+                {editorMode === 'create' ? (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('P 为专业序列，M 为管理序列；同序列数字越大职级越高')}
+                  </Typography.Text>
+                ) : null}
+              </Space>
+            }
             name="level"
             rules={[{ required: true, message: t('请输入岗位职级') }]}
           >
-            <Input maxLength={32} />
+            <Input maxLength={32} placeholder={t('例如 P3')} />
           </Form.Item>
+          {editorMode === 'create' && currentUser?.isSuperAdmin === true ? (
+            <Form.Item
+              label={
+                <Space size={4}>
+                  {t('管理层级')}
+                  <Tooltip title={t('数值越高，可管理的岗位层级越高；同级不可互相管理')}>
+                    <QuestionCircleOutlined />
+                  </Tooltip>
+                </Space>
+              }
+              name="managementRank"
+            >
+              <InputNumber
+                min={0}
+                max={1000}
+                precision={0}
+                placeholder={t('例如 60')}
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          ) : null}
           <Space className="full-width" size={12}>
             <Form.Item
               label={t('编制人数')}
@@ -604,7 +680,13 @@ export function OrganizationPositionsPage() {
               rules={[{ required: true, message: t('请输入编制人数') }]}
               style={{ flex: 1 }}
             >
-              <InputNumber min={0} max={10000} precision={0} style={{ width: '100%' }} />
+              <InputNumber
+                min={0}
+                max={10000}
+                precision={0}
+                placeholder={t('例如 6')}
+                style={{ width: '100%' }}
+              />
             </Form.Item>
             <Form.Item
               label={t('在岗人数')}
@@ -612,7 +694,13 @@ export function OrganizationPositionsPage() {
               rules={[{ required: true, message: t('请输入在岗人数') }]}
               style={{ flex: 1 }}
             >
-              <InputNumber min={0} max={10000} precision={0} style={{ width: '100%' }} />
+              <InputNumber
+                min={0}
+                max={10000}
+                precision={0}
+                placeholder={t('例如 3')}
+                style={{ width: '100%' }}
+              />
             </Form.Item>
           </Space>
           <Form.Item
@@ -621,6 +709,7 @@ export function OrganizationPositionsPage() {
             rules={[{ required: true, message: t('请选择状态') }]}
           >
             <Select
+              placeholder={t('例如 启用')}
               options={[
                 { value: 'enabled', label: t('启用') },
                 { value: 'disabled', label: t('停用') },

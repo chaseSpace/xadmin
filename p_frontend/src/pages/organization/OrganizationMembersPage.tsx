@@ -1284,7 +1284,7 @@ export function OrganizationMembersPage() {
                   <Space size={6}>
                     <span>{t('所属岗位')}</span>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {t('无权分配：岗位包含当前账号不可继续授予的权限')}
+                      {t('当你看到“无权分配”时，表示该岗位含有你不可授予的权限。')}
                     </Typography.Text>
                   </Space>
                 }
@@ -1370,7 +1370,14 @@ export function OrganizationMembersPage() {
             />
           </Form.Item>
           <Form.Item
-            label={t('所属岗位')}
+            label={
+              <Space size={6}>
+                <span>{t('所属岗位')}</span>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {t('当你看到“无权分配”时，表示该岗位含有你不可授予的权限。')}
+                </Typography.Text>
+              </Space>
+            }
             name="positionId"
             rules={[{ required: true, message: t('请选择所属岗位') }]}
           >

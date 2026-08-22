@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apiClient } from './client'
 import {
   assignOrganizationUserPosition,
+  createOrganizationPosition,
   getOrganizationPositions,
   getOrganizationUsers,
   updateOrganizationPosition,
@@ -67,6 +68,30 @@ describe('getOrganizationUsers', () => {
 })
 
 describe('organization privilege mutation payloads', () => {
+  it('sends management rank only through position creation', async () => {
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValueOnce({ data: { code: 200 } })
+
+    await createOrganizationPosition({
+      name: '测试主管',
+      code: 'POS-TEST-MANAGER',
+      departmentId: 3,
+      level: 'M1',
+      managementRank: 60,
+      hc: 1,
+      staffed: 0,
+    })
+
+    expect(postSpy).toHaveBeenCalledWith('/organization/positions', {
+      name: '测试主管',
+      code: 'POS-TEST-MANAGER',
+      department_id: 3,
+      level: 'M1',
+      management_rank: 60,
+      hc: 1,
+      staffed: 0,
+    })
+  })
+
   it('keeps profile updates free of position and status fields', async () => {
     const putSpy = vi.spyOn(apiClient, 'put').mockResolvedValueOnce({ data: { code: 200 } })
 
@@ -127,6 +152,38 @@ describe('organization privilege mutation payloads', () => {
 })
 
 describe('getOrganizationPositions', () => {
+  it('maps the read-only management rank', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValueOnce({
+      data: {
+        code: 200,
+        message: 'ok',
+        data: {
+          total: '1',
+          page: { pn: 1, ps: 10 },
+          items: [
+            {
+              id: 7,
+              name: '测试主管',
+              code: 'POS-TEST-MANAGER',
+              department_id: 3,
+              department_name: '测试部',
+              level: 'M1',
+              management_rank: 60,
+              hc: 1,
+              staffed: 0,
+              related_count: 0,
+              status: 'enabled',
+              updated_at: '2026-08-22T12:00:00Z',
+            },
+          ],
+        },
+      },
+    })
+
+    const result = await getOrganizationPositions()
+    expect(result.items[0]?.managementRank).toBe(60)
+  })
+
   it('requests nearest-parent position inheritance for user assignment', async () => {
     const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValueOnce({
       data: {
