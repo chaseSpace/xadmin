@@ -33,6 +33,18 @@ type WarmTipRow struct {
 	ContentEn string `gorm:"column:content_en"`
 }
 
+type ProfileRelationRow struct {
+	DepartmentID   int64  `gorm:"column:department_id"`
+	DepartmentName string `gorm:"column:department_name"`
+	DepartmentCode string `gorm:"column:department_code"`
+	PositionID     int64  `gorm:"column:position_id"`
+	PositionName   string `gorm:"column:position_name"`
+	PositionCode   string `gorm:"column:position_code"`
+	RoleID         int64  `gorm:"column:role_id"`
+	RoleName       string `gorm:"column:role_name"`
+	RoleCode       string `gorm:"column:role_code"`
+}
+
 func NewRepo() *Repo {
 	return &Repo{db: db.GetDatabase()}
 }
@@ -103,6 +115,37 @@ func (r *Repo) GetUserByUID(ctx context.Context, uid int32) (*model.AdminUser, e
 		return nil, xerr.WrapDBNotFound(err, "user not found")
 	}
 	return &user, nil
+}
+
+func (r *Repo) ListProfileRelationsByUID(ctx context.Context, uid int32) ([]ProfileRelationRow, error) {
+	if uid <= 0 {
+		return []ProfileRelationRow{}, nil
+	}
+	rows := make([]ProfileRelationRow, 0, 4)
+	err := r.db.WithContext(ctx).
+		Table("admin_user u").
+		Select(`
+u.department_id,
+COALESCE(d.name, '') AS department_name,
+COALESCE(d.code, '') AS department_code,
+u.position_id,
+COALESCE(p.name, '') AS position_name,
+COALESCE(p.code, '') AS position_code,
+COALESCE(r.id, 0) AS role_id,
+COALESCE(r.role_name, '') AS role_name,
+COALESCE(r.role_code, '') AS role_code
+`).
+		Joins("LEFT JOIN organization_department d ON d.id = u.department_id AND d.deleted_at = 0").
+		Joins("LEFT JOIN organization_position p ON p.id = u.position_id AND p.deleted_at = 0").
+		Joins("LEFT JOIN organization_position_role opr ON opr.position_id = u.position_id").
+		Joins("LEFT JOIN permission_role r ON r.id = opr.role_id AND r.deleted_at = 0").
+		Where("u.uid = ? AND u.deleted_at = 0", uid).
+		Order("r.id ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, xerr.WrapDBE(err, "list profile relations by uid")
+	}
+	return rows, nil
 }
 
 func (r *Repo) ListEnabledPermissionKeysByUID(ctx context.Context, uid int32) ([]string, error) {

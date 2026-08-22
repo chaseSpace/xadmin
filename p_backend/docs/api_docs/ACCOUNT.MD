@@ -1,7 +1,7 @@
 # ACCOUNT HTTP API DOC
 
 ## GET /v1/account/me/profile
-- 描述：获取当前登录账号简要信息（头像、昵称等）。
+- 描述：获取当前登录账号信息，包括头像、联系方式、所属部门、岗位、关联角色及权限上下文。
 - 鉴权：是。
 
 ### Response 200
@@ -16,6 +16,23 @@
     "avatar": "https://example.com/avatar.png",
     "email": "admin@example.com",
     "phone": "13800000000",
+    "department": {
+      "id": "10",
+      "name": "技术部",
+      "code": "tech"
+    },
+    "position": {
+      "id": "20",
+      "name": "平台工程师",
+      "code": "platform_engineer"
+    },
+    "roles": [
+      {
+        "id": "30",
+        "name": "运维管理员",
+        "code": "ops_admin"
+      }
+    ],
     "menu_routes": [
       "/business/users",
       "/business/user-punishments"
@@ -60,6 +77,8 @@
 
 - `permission_keys`：当前账号全部有效权限键，包含按钮权限，供前端控制操作入口。
 - `is_super_admin`：依据稳定 `role_code=super_admin` 和 `is_protected=true` 计算，不依赖用户名或角色显示名称。
+- `department` / `position`：当前账号所属部门和岗位；未分配时对应字段为 `null`。
+- `roles`：当前岗位绑定且未删除的角色，按角色 ID 升序返回；未绑定时返回空数组。
 
 ## GET /v1/account/me/settings
 - 描述：获取当前登录账号个人设置。

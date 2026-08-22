@@ -113,6 +113,12 @@ message AuthUpdateSystemSettingsReq {
   int32 global_watermark_font_size = 12 [(validate.rules).int32 = {gte: 12, lte: 32}];
 }
 
+message AuthProfileRelationItem {
+  int64 id = 1;
+  string name = 2;
+  string code = 3;
+}
+
 message AuthMeProfileResp {
   int32 uid = 1;
   string username = 2;
@@ -125,6 +131,9 @@ message AuthMeProfileResp {
   AuthWarmTip warm_tip = 9;
   repeated string permission_keys = 10;
   bool is_super_admin = 11;
+  AuthProfileRelationItem department = 12;
+  AuthProfileRelationItem position = 13;
+  repeated AuthProfileRelationItem roles = 14;
 }
 
 message AuthMenuItem {

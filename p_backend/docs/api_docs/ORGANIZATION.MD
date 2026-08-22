@@ -101,6 +101,7 @@
   - `order_type`（可选）：`asc` / `desc`，默认 `desc`。
   - `keyword`（可选）：岗位名称/岗位编码模糊匹配。
   - `department_id`（可选）：部门 ID。
+  - `inherit_parent`（可选）：`true/false`，默认 `false`；为 `true` 且所选部门没有直属岗位时，返回最近一个配置了岗位的上级部门岗位，供新增用户/调岗级联选择。
   - `level`（可选）：岗位职级精确匹配。
   - `status`（可选）：`enabled` / `disabled`。
 
@@ -288,7 +289,7 @@
 - 权限：`organization.users.edit_profile`。
 - Request Body 增补：
   - `department_id`（可选）：关联部门 ID。
-  - `position_id`（可选）：关联岗位 ID（传入时要求岗位属于部门，且岗位必须为启用状态）。
+  - `position_id`（可选）：关联岗位 ID（传入时要求岗位属于部门；无直属岗位时可属于最近配置了岗位的上级部门，且岗位必须为启用状态）。
 - 约束：非超管不能把新用户放入受保护岗位；目标岗位权限必须在操作者的可委派权限范围内。
 
 ## POST /v1/organization/users/transfer-position
@@ -304,7 +305,7 @@
   "position_id": "2"
 }
 ```
-- 约束：岗位必须属于所选部门且为启用状态；非超管不得包含自己、受保护账号或同级/更高权限账号，目标岗位必须处于可委派范围。
+- 约束：岗位必须属于所选部门；无直属岗位时可属于最近配置了岗位的上级部门，且岗位必须为启用状态。非超管不得包含自己、受保护账号或同级/更高权限账号，目标岗位必须处于可委派范围。
 - 会话：调岗和所有目标用户的会话撤销在同一事务完成。
 
 ## PUT /v1/organization/users/:uid/profile

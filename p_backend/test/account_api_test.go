@@ -48,7 +48,21 @@ func (m *mockAccountService) GetMyProfile(ctx context.Context, uid int32) (*xadm
 		Avatar:      "",
 		Email:       "admin@example.com",
 		Phone:       "13800000000",
-		MenuRoutes:  []string{"/business/users", "/business/user-punishments"},
+		Department: &xadmin.AuthProfileRelationItem{
+			Id:   10,
+			Name: "技术部",
+			Code: "tech",
+		},
+		Position: &xadmin.AuthProfileRelationItem{
+			Id:   20,
+			Name: "平台工程师",
+			Code: "platform_engineer",
+		},
+		Roles: []*xadmin.AuthProfileRelationItem{
+			{Id: 30, Name: "运维管理员", Code: "ops_admin"},
+			{Id: 31, Name: "审计员", Code: "auditor"},
+		},
+		MenuRoutes: []string{"/business/users", "/business/user-punishments"},
 		MenuItems: []*xadmin.AuthMenuItem{
 			{
 				Id:            5,
@@ -309,6 +323,18 @@ func TestGetAccountMyProfileAPI(t *testing.T) {
 	}
 	if child["icon"] != "usergroup-add" {
 		t.Fatalf("unexpected child menu icon: %v", child["icon"])
+	}
+	department := data["department"].(map[string]any)
+	if department["id"] != "10" || department["name"] != "技术部" || department["code"] != "tech" {
+		t.Fatalf("unexpected department: %v", department)
+	}
+	position := data["position"].(map[string]any)
+	if position["id"] != "20" || position["name"] != "平台工程师" || position["code"] != "platform_engineer" {
+		t.Fatalf("unexpected position: %v", position)
+	}
+	roles := data["roles"].([]any)
+	if len(roles) != 2 || roles[0].(map[string]any)["name"] != "运维管理员" || roles[1].(map[string]any)["code"] != "auditor" {
+		t.Fatalf("unexpected roles: %v", roles)
 	}
 	warmTip := data["warm_tip"].(map[string]any)
 	if warmTip["tip_type"] != "positive" || warmTip["content_zh"] != "今天也把重要的事推进一点" {

@@ -194,6 +194,7 @@ message OrganizationPositionsReq {
   int64 department_id = 4 [(validate.rules).int64 = {gte: 0}];
   string level = 5 [(validate.rules).string = {max_len: 32}];
   OrganizationPositionFilterStatus status = 6;
+  bool inherit_parent = 7;
 }
 
 message OrganizationPositionItem {

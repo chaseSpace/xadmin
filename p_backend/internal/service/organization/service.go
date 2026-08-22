@@ -220,7 +220,19 @@ func (s *service) ListPositions(ctx context.Context, operatorUID int32, req *xad
 	if page.GetPs() <= 0 {
 		page.Ps = 10
 	}
-	rows, total, err := s.repo.ListPositions(ctx, page, normalizePositionSortArgs(req.GetSort()), buildPositionFilters(req))
+	filters := buildPositionFilters(req)
+	if filters.DepartmentID != nil && req.GetInheritParent() {
+		resolvedDepartmentID, err := resolveAssignablePositionDepartmentID(
+			ctx,
+			*filters.DepartmentID,
+			s.repo.GetDepartmentByID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		filters.DepartmentID = &resolvedDepartmentID
+	}
+	rows, total, err := s.repo.ListPositions(ctx, page, normalizePositionSortArgs(req.GetSort()), filters)
 	if err != nil {
 		return nil, err
 	}
@@ -521,8 +533,8 @@ func (s *service) CreateUser(ctx context.Context, operatorUID int32, req *xadmin
 		if err != nil {
 			return nil, err
 		}
-		if position.DepartmentID != req.GetDepartmentId() {
-			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_not_in_department")
+		if err := s.ensurePositionMatchesDepartment(ctx, req.GetDepartmentId(), position.DepartmentID); err != nil {
+			return nil, err
 		}
 		if position.Status != consts.PositionStatusEnabled {
 			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_disabled")
@@ -598,8 +610,8 @@ func (s *service) AssignUserPosition(ctx context.Context, operatorUID int32, req
 		if err != nil {
 			return nil, err
 		}
-		if position.DepartmentID != req.GetDepartmentId() {
-			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_not_in_department")
+		if err := s.ensurePositionMatchesDepartment(ctx, req.GetDepartmentId(), position.DepartmentID); err != nil {
+			return nil, err
 		}
 		if position.Status != consts.PositionStatusEnabled {
 			return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_disabled")
@@ -656,8 +668,8 @@ func (s *service) BatchTransferUsers(ctx context.Context, operatorUID int32, req
 	if err != nil {
 		return nil, err
 	}
-	if position.DepartmentID != req.GetDepartmentId() {
-		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_not_in_department")
+	if err := s.ensurePositionMatchesDepartment(ctx, req.GetDepartmentId(), position.DepartmentID); err != nil {
+		return nil, err
 	}
 	if position.Status != consts.PositionStatusEnabled {
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "org.position_disabled")
@@ -949,6 +961,54 @@ func buildPositionFilters(req *xadmin.OrganizationPositionsReq) organizationrepo
 		Level:        strings.TrimSpace(req.GetLevel()),
 		Status:       statusPtr,
 	}
+}
+
+type departmentByIDLookup func(context.Context, int64) (*organizationrepo.DepartmentRow, error)
+
+func resolveAssignablePositionDepartmentID(
+	ctx context.Context,
+	departmentID int64,
+	getDepartment departmentByIDLookup,
+) (int64, error) {
+	if departmentID <= 0 {
+		return 0, nil
+	}
+	originalDepartmentID := departmentID
+	visited := make(map[int64]struct{}, 8)
+	for currentID := departmentID; currentID > 0; {
+		if _, exists := visited[currentID]; exists {
+			return originalDepartmentID, nil
+		}
+		visited[currentID] = struct{}{}
+		department, err := getDepartment(ctx, currentID)
+		if err != nil {
+			return 0, err
+		}
+		if department.PositionCount > 0 {
+			return department.ID, nil
+		}
+		currentID = department.ParentID
+	}
+	return originalDepartmentID, nil
+}
+
+func (s *service) ensurePositionMatchesDepartment(
+	ctx context.Context,
+	departmentID int64,
+	positionDepartmentID int64,
+) error {
+	resolvedDepartmentID, err := resolveAssignablePositionDepartmentID(
+		ctx,
+		departmentID,
+		s.repo.GetDepartmentByID,
+	)
+	if err != nil {
+		return err
+	}
+	if resolvedDepartmentID != positionDepartmentID {
+		return xerr.NewBiz(xerr.CodeBadRequest, "org.position_not_in_department")
+	}
+	return nil
 }
 
 func sessionStatusToDB(status xadmin.AuthSessionStatus) (string, error) {

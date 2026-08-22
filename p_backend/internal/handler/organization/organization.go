@@ -73,6 +73,8 @@ func (h *Handler) Positions(c *fiber.Ctx) error {
 	req := &xadmin.OrganizationPositionsReq{Page: page, Sort: sort}
 	req.Keyword = strings.TrimSpace(c.Query("keyword"))
 	req.Level = strings.TrimSpace(c.Query("level"))
+	inheritParentRaw := strings.TrimSpace(c.Query("inherit_parent"))
+	req.InheritParent = inheritParentRaw == "1" || strings.EqualFold(inheritParentRaw, "true")
 	if departmentIDRaw := strings.TrimSpace(c.Query("department_id")); departmentIDRaw != "" {
 		departmentID, err := strconv.ParseInt(departmentIDRaw, 10, 64)
 		if err != nil {

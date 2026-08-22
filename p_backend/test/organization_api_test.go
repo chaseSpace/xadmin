@@ -15,6 +15,7 @@ import (
 )
 
 type mockOrganizationService struct {
+	lastPositionsReq     *xadmin.OrganizationPositionsReq
 	lastPositionRolesReq *xadmin.OrganizationUpdatePositionRolesReq
 	lastUserProfileReq   *xadmin.OrganizationUpdateUserProfileReq
 }
@@ -76,7 +77,7 @@ func (m *mockOrganizationService) DeleteDepartment(ctx context.Context, req *xad
 func (m *mockOrganizationService) ListPositions(ctx context.Context, operatorUID int32, req *xadmin.OrganizationPositionsReq) (*xadmin.OrganizationPositionsResp, error) {
 	_ = ctx
 	_ = operatorUID
-	_ = req
+	m.lastPositionsReq = req
 	return &xadmin.OrganizationPositionsResp{
 		Total: 1,
 		Items: []*xadmin.OrganizationPositionItem{
@@ -397,6 +398,18 @@ func TestOrganizationPositionsAPI(t *testing.T) {
 	body := decodeJSON(t, resp)
 	if body["code"].(float64) != 200 {
 		t.Fatalf("unexpected code: %v", body["code"])
+	}
+}
+
+func TestOrganizationPositionsInheritedDepartmentQueryAPI(t *testing.T) {
+	svc := &mockOrganizationService{}
+	app := setupOrganizationAppWithMock(svc)
+	resp := request(t, app, http.MethodGet, "/v1/organization/positions?department_id=12&inherit_parent=true", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status: %d", resp.StatusCode)
+	}
+	if svc.lastPositionsReq == nil || svc.lastPositionsReq.GetDepartmentId() != 12 || !svc.lastPositionsReq.GetInheritParent() {
+		t.Fatalf("unexpected inherited position query: %+v", svc.lastPositionsReq)
 	}
 }
 

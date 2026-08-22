@@ -194,6 +194,11 @@ func (s *service) GetMyProfile(ctx context.Context, uid int32) (*xadmin.AuthMePr
 	if err != nil {
 		return nil, err
 	}
+	relationRows, err := s.repo.ListProfileRelationsByUID(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	department, position, roles := buildAuthProfileRelations(relationRows)
 	menuRoutes, err := s.repo.ListEnabledMenuRoutesByUID(ctx, uid)
 	if err != nil {
 		return nil, err
@@ -234,7 +239,54 @@ func (s *service) GetMyProfile(ctx context.Context, uid int32) (*xadmin.AuthMePr
 		WarmTip:        buildAuthWarmTip(warmTip),
 		PermissionKeys: permissionKeys,
 		IsSuperAdmin:   isSuperAdmin,
+		Department:     department,
+		Position:       position,
+		Roles:          roles,
 	}, nil
+}
+
+func buildAuthProfileRelations(rows []authrepo.ProfileRelationRow) (
+	*xadmin.AuthProfileRelationItem,
+	*xadmin.AuthProfileRelationItem,
+	[]*xadmin.AuthProfileRelationItem,
+) {
+	roles := make([]*xadmin.AuthProfileRelationItem, 0, len(rows))
+	if len(rows) == 0 {
+		return nil, nil, roles
+	}
+	first := rows[0]
+	var department *xadmin.AuthProfileRelationItem
+	if first.DepartmentID > 0 {
+		department = &xadmin.AuthProfileRelationItem{
+			Id:   first.DepartmentID,
+			Name: strings.TrimSpace(first.DepartmentName),
+			Code: strings.TrimSpace(first.DepartmentCode),
+		}
+	}
+	var position *xadmin.AuthProfileRelationItem
+	if first.PositionID > 0 {
+		position = &xadmin.AuthProfileRelationItem{
+			Id:   first.PositionID,
+			Name: strings.TrimSpace(first.PositionName),
+			Code: strings.TrimSpace(first.PositionCode),
+		}
+	}
+	seenRoleIDs := make(map[int64]struct{}, len(rows))
+	for _, row := range rows {
+		if row.RoleID <= 0 {
+			continue
+		}
+		if _, exists := seenRoleIDs[row.RoleID]; exists {
+			continue
+		}
+		seenRoleIDs[row.RoleID] = struct{}{}
+		roles = append(roles, &xadmin.AuthProfileRelationItem{
+			Id:   row.RoleID,
+			Name: strings.TrimSpace(row.RoleName),
+			Code: strings.TrimSpace(row.RoleCode),
+		})
+	}
+	return department, position, roles
 }
 
 func buildAuthWarmTip(row *authrepo.WarmTipRow) *xadmin.AuthWarmTip {
