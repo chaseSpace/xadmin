@@ -86,7 +86,16 @@ type MeProfileApiResponse = {
     warm_tip?: CurrentUserWarmTipApiItem
     permission_keys?: string[]
     is_super_admin?: boolean
+    department?: CurrentUserProfileRelationApiItem | null
+    position?: CurrentUserProfileRelationApiItem | null
+    roles?: CurrentUserProfileRelationApiItem[]
   }
+}
+
+type CurrentUserProfileRelationApiItem = {
+  id: number | string
+  name: string
+  code: string
 }
 
 type CurrentUserWarmTipApiItem = {
@@ -130,6 +139,15 @@ export type CurrentUserProfile = {
   warmTip: CurrentUserWarmTip | null
   permissionKeys: string[]
   isSuperAdmin: boolean
+  department: CurrentUserProfileRelation | null
+  position: CurrentUserProfileRelation | null
+  roles: CurrentUserProfileRelation[]
+}
+
+export type CurrentUserProfileRelation = {
+  id: number
+  name: string
+  code: string
 }
 
 export type CurrentUserWarmTip = {
@@ -150,6 +168,23 @@ function mapCurrentUserWarmTip(
     tipType: String(item.tip_type || ''),
     contentZh: String(item.content_zh || ''),
     contentEn: String(item.content_en || ''),
+  }
+}
+
+function mapCurrentUserProfileRelation(
+  item: CurrentUserProfileRelationApiItem | null | undefined,
+): CurrentUserProfileRelation | null {
+  if (!item || typeof item !== 'object') {
+    return null
+  }
+  const id = Number(item.id)
+  if (!Number.isFinite(id) || id <= 0) {
+    return null
+  }
+  return {
+    id,
+    name: String(item.name || '').trim(),
+    code: String(item.code || '').trim(),
   }
 }
 
@@ -191,6 +226,13 @@ export async function getMyProfile(): Promise<CurrentUserProfile> {
       ? response.data.data.permission_keys.map(String).filter(Boolean)
       : [],
     isSuperAdmin: Boolean(response.data.data.is_super_admin),
+    department: mapCurrentUserProfileRelation(response.data.data.department),
+    position: mapCurrentUserProfileRelation(response.data.data.position),
+    roles: Array.isArray(response.data.data.roles)
+      ? response.data.data.roles
+          .map(mapCurrentUserProfileRelation)
+          .filter((item): item is CurrentUserProfileRelation => item !== null)
+      : [],
   }
 }
 

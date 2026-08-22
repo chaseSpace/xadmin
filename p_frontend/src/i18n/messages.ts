@@ -499,6 +499,8 @@ const enUsMessages: Record<string, string> = {
   '部门删除成功': 'Department deleted',
   '请先在左侧选择父部门': 'Select a parent department in the left tree first',
   '请先选择部门': 'Select a department first',
+  '该部门暂无可分配岗位': 'No assignable positions for this department',
+  '无权分配': 'Not assignable',
   '确认{action}部门': '{action} department?',
   '{action}后将影响该部门在组织架构中的可见状态。':
     'After {action}, this department visibility in the organization structure will change.',

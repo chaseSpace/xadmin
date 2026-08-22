@@ -224,7 +224,10 @@ export function OrganizationMembersPage() {
   const formPositionsQuery = useQuery({
     queryKey: ['organization-positions-for-user-form', formDepartmentId],
     queryFn: () =>
-      getOrganizationPositions(1, 200, undefined, undefined, { departmentId: formDepartmentId }),
+      getOrganizationPositions(1, 200, undefined, undefined, {
+        departmentId: formDepartmentId,
+        inheritParent: true,
+      }),
     enabled:
       isAuthenticated &&
       Boolean(currentUser?.uid) &&
@@ -238,6 +241,7 @@ export function OrganizationMembersPage() {
     queryFn: () =>
       getOrganizationPositions(1, 200, undefined, undefined, {
         departmentId: transferDepartmentId,
+        inheritParent: true,
       }),
     enabled:
       isAuthenticated &&
@@ -277,23 +281,19 @@ export function OrganizationMembersPage() {
     if (formDepartmentId <= 0) {
       return []
     }
-    return (formPositionsQuery.data?.items ?? [])
-      .filter((item) => item.canAssign)
-      .map((item) => ({
-        value: item.id,
-        label: `${item.name}（${item.departmentName || t('未分配部门')}）${item.status === 'disabled' ? ` [${t('停用')}]` : ''}`,
-        disabled: item.status === 'disabled',
-      }))
+    return (formPositionsQuery.data?.items ?? []).map((item) => ({
+      value: item.id,
+      label: `${item.name}（${item.departmentName || t('未分配部门')}）${item.status === 'disabled' ? ` [${t('停用')}]` : !item.canAssign ? ` [${t('无权分配')}]` : ''}`,
+      disabled: item.status === 'disabled' || !item.canAssign,
+    }))
   }, [formDepartmentId, formPositionsQuery.data?.items, t])
   const scopedTransferPositionOptions = useMemo(() => {
     if (transferDepartmentId <= 0) return []
-    return (transferPositionsQuery.data?.items ?? [])
-      .filter((item) => item.canAssign)
-      .map((item) => ({
-        value: item.id,
-        label: `${item.name}（${item.departmentName || t('未分配部门')}）${item.status === 'disabled' ? ` [${t('停用')}]` : ''}`,
-        disabled: item.status === 'disabled',
-      }))
+    return (transferPositionsQuery.data?.items ?? []).map((item) => ({
+      value: item.id,
+      label: `${item.name}（${item.departmentName || t('未分配部门')}）${item.status === 'disabled' ? ` [${t('停用')}]` : !item.canAssign ? ` [${t('无权分配')}]` : ''}`,
+      disabled: item.status === 'disabled' || !item.canAssign,
+    }))
   }, [transferDepartmentId, transferPositionsQuery.data?.items, t])
 
   const forceLogoutUsers = async (uids: number[]) => {
@@ -1253,6 +1253,9 @@ export function OrganizationMembersPage() {
                   options={scopedPositionFormOptions}
                   loading={formPositionsQuery.isLoading || formPositionsQuery.isFetching}
                   placeholder={formDepartmentId > 0 ? t('请选择') : t('请先选择部门')}
+                  notFoundContent={
+                    formPositionsQuery.isFetching ? t('加载中...') : t('该部门暂无可分配岗位')
+                  }
                   disabled={formDepartmentId <= 0}
                   allowClear
                 />
@@ -1333,6 +1336,9 @@ export function OrganizationMembersPage() {
               options={scopedTransferPositionOptions}
               loading={transferPositionsQuery.isLoading || transferPositionsQuery.isFetching}
               placeholder={transferDepartmentId > 0 ? t('请选择') : t('请先选择部门')}
+              notFoundContent={
+                transferPositionsQuery.isFetching ? t('加载中...') : t('该部门暂无可分配岗位')
+              }
               disabled={transferDepartmentId <= 0}
             />
           </Form.Item>

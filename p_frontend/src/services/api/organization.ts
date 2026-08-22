@@ -540,6 +540,7 @@ export type OrganizationPositionsPage = {
 export type OrganizationPositionFilters = {
   keyword?: string
   departmentId?: number
+  inheritParent?: boolean
   level?: string
   status?: 'enabled' | 'disabled'
 }
@@ -611,6 +612,7 @@ export async function getOrganizationPositions(
         order_type: orderType,
         keyword: filters?.keyword,
         department_id: filters?.departmentId,
+        inherit_parent: filters?.inheritParent ? true : undefined,
         level: filters?.level,
         status: filters?.status,
       },

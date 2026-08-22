@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apiClient } from './client'
 import {
   assignOrganizationUserPosition,
+  getOrganizationPositions,
   getOrganizationUsers,
   updateOrganizationPosition,
   updateOrganizationPositionRoles,
@@ -122,5 +123,36 @@ describe('organization privilege mutation payloads', () => {
       status: 1,
     })
     expect(postSpy).toHaveBeenCalledWith('/organization/positions/7/roles', { role_ids: [2, 3] })
+  })
+})
+
+describe('getOrganizationPositions', () => {
+  it('requests nearest-parent position inheritance for user assignment', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValueOnce({
+      data: {
+        code: 200,
+        message: 'ok',
+        data: { total: '0', page: { pn: 1, ps: 200 }, items: [] },
+      },
+    })
+
+    await getOrganizationPositions(1, 200, undefined, undefined, {
+      departmentId: 12,
+      inheritParent: true,
+    })
+
+    expect(getSpy).toHaveBeenCalledWith('/organization/positions', {
+      params: {
+        page_no: 1,
+        page_size: 200,
+        order_field: undefined,
+        order_type: undefined,
+        keyword: undefined,
+        department_id: 12,
+        inherit_parent: true,
+        level: undefined,
+        status: undefined,
+      },
+    })
   })
 })

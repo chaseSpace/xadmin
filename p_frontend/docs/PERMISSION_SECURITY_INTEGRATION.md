@@ -6,6 +6,7 @@
 
 - `permission_keys`：全部有效权限键，写操作入口统一通过 `hasPermission` 判断。
 - `is_super_admin`：稳定超管身份，禁止通过用户名或角色显示名称推断。
+- `department` / `position` / `roles`：当前账号的部门、岗位与岗位关联角色，供“我的信息”弹窗展示；未分配时分别为 `null` / `null` / `[]`。
 
 权限上下文保存在 Auth Store；重新登录或刷新页面时以服务端返回为准。
 
@@ -18,6 +19,8 @@
 - 批量调岗：`POST /organization/users/transfer-position`
 
 用户列表返回 `is_protected/can_manage`。按钮显示条件为“当前用户拥有对应权限键”且“目标 `can_manage=true`”。资料编辑请求不得夹带岗位和状态字段。
+
+新增用户和调岗的岗位级联请求使用 `inherit_parent=true`；所选部门无直属岗位时，后端返回最近一个配置了岗位的上级部门岗位，最终提交仍由 Service 校验岗位继承关系和可委派范围。
 
 ## 岗位操作
 

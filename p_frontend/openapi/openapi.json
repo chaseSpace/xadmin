@@ -304,7 +304,7 @@
           "message": { "type": "string" },
           "data": {
             "type": "object",
-            "required": ["uid", "username", "permission_keys", "is_super_admin"],
+            "required": ["uid", "username", "permission_keys", "is_super_admin", "department", "position", "roles"],
             "properties": {
               "uid": { "type": "integer", "format": "int32" },
               "username": { "type": "string" },
@@ -314,9 +314,35 @@
               "phone": { "type": "string" },
               "menu_routes": { "type": "array", "items": { "type": "string" } },
               "permission_keys": { "type": "array", "items": { "type": "string" } },
-              "is_super_admin": { "type": "boolean" }
+              "is_super_admin": { "type": "boolean" },
+              "department": {
+                "nullable": true,
+                "allOf": [{ "$ref": "#/components/schemas/AuthProfileRelationItem" }]
+              },
+              "position": {
+                "nullable": true,
+                "allOf": [{ "$ref": "#/components/schemas/AuthProfileRelationItem" }]
+              },
+              "roles": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/AuthProfileRelationItem" }
+              }
             }
           }
+        }
+      },
+      "AuthProfileRelationItem": {
+        "type": "object",
+        "required": ["id", "name", "code"],
+        "properties": {
+          "id": {
+            "oneOf": [
+              { "type": "integer", "format": "int64" },
+              { "type": "string", "pattern": "^[0-9]+$" }
+            ]
+          },
+          "name": { "type": "string" },
+          "code": { "type": "string" }
         }
       },
       "UpdateOrganizationUserProfileRequest": {

@@ -166,7 +166,15 @@ export interface components {
         menu_routes?: string[]
         permission_keys: string[]
         is_super_admin: boolean
+        department: components['schemas']['AuthProfileRelationItem'] | null
+        position: components['schemas']['AuthProfileRelationItem'] | null
+        roles: components['schemas']['AuthProfileRelationItem'][]
       }
+    }
+    AuthProfileRelationItem: {
+      id: number | string
+      name: string
+      code: string
     }
     UpdateOrganizationUserProfileRequest: {
       display_name: string

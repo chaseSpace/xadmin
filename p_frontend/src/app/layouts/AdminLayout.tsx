@@ -39,7 +39,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { Alert, Avatar, Breadcrumb, Dropdown, Form, Input, Layout, Menu, Modal, Select, Space, Switch, Tabs, Tooltip, Typography, Watermark, message } from 'antd'
+import { Alert, Avatar, Breadcrumb, Descriptions, Dropdown, Form, Input, Layout, Menu, Modal, Select, Space, Switch, Tabs, Tag, Tooltip, Typography, Watermark, message } from 'antd'
 import type { MenuProps } from 'antd'
 import type { AppTabKey, AppTabItem } from '../../store/pageTabs'
 import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
@@ -1140,6 +1140,7 @@ export function AdminLayout() {
           open={myInfoOpen}
           onCancel={() => setMyInfoOpen(false)}
           footer={null}
+          width={560}
         >
           {myInfoLoading ? (
             <Typography.Text type="secondary">{t('加载中...')}</Typography.Text>
@@ -1157,8 +1158,44 @@ export function AdminLayout() {
                 </Space>
               </Space>
               <Typography.Text>UID：{myProfile?.uid ?? currentUser?.uid ?? '-'}</Typography.Text>
-              <Typography.Text>{t('邮箱：')}{myProfile?.email || '-'}</Typography.Text>
-              <Typography.Text>{t('手机号：')}{myProfile?.phone || '-'}</Typography.Text>
+              <Descriptions
+                bordered
+                size="small"
+                column={1}
+                items={[
+                  {
+                    key: 'email',
+                    label: t('邮箱'),
+                    children: myProfile?.email || '-',
+                  },
+                  {
+                    key: 'phone',
+                    label: t('手机号'),
+                    children: myProfile?.phone || '-',
+                  },
+                  {
+                    key: 'department',
+                    label: t('所属部门'),
+                    children: myProfile?.department?.name || '-',
+                  },
+                  {
+                    key: 'position',
+                    label: t('所属岗位'),
+                    children: myProfile?.position?.name || '-',
+                  },
+                  {
+                    key: 'roles',
+                    label: t('关联角色'),
+                    children: myProfile?.roles.length ? (
+                      <Space size={[4, 4]} wrap>
+                        {myProfile.roles.map((role) => (
+                          <Tag key={role.id}>{role.name || role.code || `#${role.id}`}</Tag>
+                        ))}
+                      </Space>
+                    ) : '-',
+                  },
+                ]}
+              />
             </Space>
           )}
         </Modal>
