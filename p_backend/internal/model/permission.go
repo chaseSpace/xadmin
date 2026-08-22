@@ -50,15 +50,3 @@ type PermissionRoleMenu struct {
 func (PermissionRoleMenu) TableName() string {
 	return "permission_role_menu"
 }
-
-// PermissionRoleUser maps to permission_role_user table.
-type PermissionRoleUser struct {
-	db.ModelBase
-	ID     int64 `gorm:"column:id"`
-	RoleID int64 `gorm:"column:role_id"`
-	UID    int32 `gorm:"column:uid"`
-}
-
-func (PermissionRoleUser) TableName() string {
-	return "permission_role_user"
-}

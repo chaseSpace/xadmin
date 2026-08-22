@@ -25,13 +25,8 @@ WHERE d.code = 'HQ' AND d.deleted_at = 0
 ON CONFLICT (code, deleted_at) DO NOTHING;
 
 INSERT INTO organization_position (name, code, department_id, level, hc, staffed, status, sort)
-SELECT seed.name, seed.code, d.id, seed.level, seed.hc, seed.staffed, 1, seed.sort
+SELECT '组织主管', 'POS-HR-MANAGER', d.id, 'M2', 2, 1, 1, 20
 FROM organization_department d
-JOIN (
-  SELECT '组织主管' AS name, 'POS-HR-MANAGER' AS code, 'M2' AS level, 2 AS hc, 1 AS staffed, 20 AS sort
-  UNION ALL SELECT '运营专员', 'POS-OPS-SPECIALIST', 'P2', 8, 4, 30
-  UNION ALL SELECT '审计专员', 'POS-AUDITOR', 'P2', 3, 1, 40
-) seed ON TRUE
 WHERE d.code = 'HQ' AND d.deleted_at = 0
 ON CONFLICT (code, deleted_at) DO NOTHING;
 

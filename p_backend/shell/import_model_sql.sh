@@ -40,6 +40,27 @@ import re
 import sys
 from pathlib import Path
 
+
+def strip_inline_comment(value: str) -> str:
+    quote = None
+    escaped = False
+    for index, char in enumerate(value):
+        if escaped:
+            escaped = False
+            continue
+        if quote == '"' and char == '\\':
+            escaped = True
+            continue
+        if char in ('"', "'"):
+            if quote is None:
+                quote = char
+            elif quote == char:
+                quote = None
+            continue
+        if char == '#' and quote is None and (index == 0 or value[index - 1].isspace()):
+            return value[:index].rstrip()
+    return value.strip()
+
 path = Path(sys.argv[1])
 key = sys.argv[2]
 if not path.exists():
@@ -55,7 +76,7 @@ for raw in path.read_text().splitlines():
     if in_database:
         match = re.match(rf'^    {re.escape(key)}:\s*(.*)\s*$', raw)
         if match:
-            value = match.group(1).strip()
+            value = strip_inline_comment(match.group(1).strip())
             if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
                 value = value[1:-1]
             print(value)

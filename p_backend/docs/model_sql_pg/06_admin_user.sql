@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS admin_user (
   status SMALLINT NOT NULL DEFAULT 1,
   department_id BIGINT NOT NULL DEFAULT 0,
   position_id BIGINT NOT NULL DEFAULT 0,
-  limit_single_login BOOLEAN NOT NULL DEFAULT FALSE,
   deactivated_at TIMESTAMP NULL,
   last_login_at TIMESTAMP NULL,
   last_login_ip VARCHAR(64) NOT NULL DEFAULT '',
@@ -30,9 +29,9 @@ CREATE INDEX IF NOT EXISTS idx_admin_user_phone ON admin_user (phone);
 CREATE INDEX IF NOT EXISTS idx_admin_user_deleted_at ON admin_user (deleted_at);
 
 INSERT INTO admin_user (uid, username, password_hash, display_name, avatar, email, phone, status, department_id, position_id,
-                        limit_single_login, last_login_at, last_login_ip)
+                        last_login_at, last_login_ip)
 SELECT 10001, 'admin', '$2a$10$E7izPmKoa8FVP4fkae4QjOZ5SEs4Tg4LBf2FVbFb8GqTYZC0lEGim', 'Luso',
-       'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQuYOZEAwUQl5Q-LVpeodw4iBjhWa4jidhvSUY0KQ3_iQqWrjn2s95HnGQjLWt1UWO8fLH&s', '', '', 1, d.id, p.id, FALSE, NULL, ''
+       'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQuYOZEAwUQl5Q-LVpeodw4iBjhWa4jidhvSUY0KQ3_iQqWrjn2s95HnGQjLWt1UWO8fLH&s', '', '', 1, d.id, p.id, NULL, ''
 FROM organization_department d
 JOIN organization_position p ON p.department_id = d.id AND p.code = 'POS-CEO' AND p.deleted_at = 0
 WHERE d.code = 'HQ' AND d.deleted_at = 0

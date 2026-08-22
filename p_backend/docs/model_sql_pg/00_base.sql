@@ -1,2 +1,0 @@
--- PostgreSQL uses the target database selected by the connection.
--- Supabase prod connects directly to database postgres; no CREATE DATABASE is executed here.

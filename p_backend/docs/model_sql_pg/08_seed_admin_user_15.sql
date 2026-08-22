@@ -39,8 +39,8 @@ SET department_id = d.id,
 FROM (
   SELECT 21001 AS uid, 'HQ' AS department_code, 'POS-CEO' AS position_code
   UNION ALL SELECT 21002, 'HQ', 'POS-HR-MANAGER'
-  UNION ALL SELECT 21003, 'HQ', 'POS-OPS-SPECIALIST'
-  UNION ALL SELECT 21004, 'HQ', 'POS-AUDITOR'
+  UNION ALL SELECT 21003, 'PRODUCT_OPS', 'POS-USER-OPS'
+  UNION ALL SELECT 21004, 'RISK_AUDIT', 'POS-RISK-SPECIALIST'
   UNION ALL SELECT 21005, 'TECH', 'POS-TECH-MANAGER'
   UNION ALL SELECT 21006, 'TECH', 'POS-BACKEND-ENGINEER'
   UNION ALL SELECT 21007, 'PRODUCT_OPS', 'POS-PRODUCT-OPS-MANAGER'
@@ -56,5 +56,4 @@ FROM (
 JOIN organization_department d ON d.code = mapping.department_code AND d.deleted_at = 0
 JOIN organization_position p ON p.department_id = d.id AND p.code = mapping.position_code AND p.deleted_at = 0
 WHERE u.uid = mapping.uid
-  AND u.uid BETWEEN 21001 AND 21015
   AND u.deleted_at = 0;

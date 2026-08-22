@@ -48,20 +48,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_permission_role_menu ON permission_role_m
 CREATE INDEX IF NOT EXISTS idx_permission_role_menu_role_id ON permission_role_menu (role_id);
 CREATE INDEX IF NOT EXISTS idx_permission_role_menu_menu_id ON permission_role_menu (menu_id);
 
-CREATE TABLE IF NOT EXISTS permission_role_user (
-  id BIGSERIAL PRIMARY KEY,
-  role_id BIGINT NOT NULL,
-  uid INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_permission_role_user ON permission_role_user (role_id, uid);
-CREATE INDEX IF NOT EXISTS idx_permission_role_user_role_id ON permission_role_user (role_id);
-CREATE INDEX IF NOT EXISTS idx_permission_role_user_uid ON permission_role_user (uid);
-
-
-truncate permission_menu;
-INSERT INTO permission_menu (id, parent_id, name, route_path, component_path, menu_type, permission_key, sort, status) VALUES
+TRUNCATE permission_menu;
+WITH permission_menu_seed (id, parent_id, name, route_path, component_path, menu_type, permission_key, sort, status) AS (
+VALUES
 (1, 0, '组织管理', '', '', 1, 'organization.root', 10, 1),
 (2, 1, '部门管理', '/organization/departments', 'pages/organization/OrganizationStructurePage', 2, 'organization.departments.view', 20, 1),
 (3, 1, '岗位管理', '/organization/positions', 'pages/organization/OrganizationPositionsPage', 2, 'organization.positions.view', 30, 1),
@@ -82,10 +71,6 @@ INSERT INTO permission_menu (id, parent_id, name, route_path, component_path, me
 (18, 11, '告警通知', '/system/alert-bots', 'pages/system/SystemAlertBotsPage', 2, 'system.alert_bots.view', 180, 1),
 -- 操作权限（menu_type=3，不显示为菜单）
 (19, 2, '部门管理-编辑', '', '', 3, 'organization.departments.edit', 21, 1),
-(20, 3, '岗位管理-编辑', '', '', 3, 'organization.positions.edit', 31, 1),
-(21, 4, '用户列表-编辑', '', '', 3, 'organization.users.edit', 41, 1),
-(22, 9, '角色权限-编辑', '', '', 3, 'permission.roles.edit', 111, 1),
-(23, 10, '菜单权限-编辑', '', '', 3, 'permission.menus.edit', 121, 1),
 (24, 14, 'IP黑名单-编辑', '', '', 3, 'system.ip_blacklist.edit', 161, 1),
 (25, 17, '关怀提示-编辑', '', '', 3, 'system.warm_tips.edit', 171, 1),
 (26, 18, '机器人配置-编辑', '', '', 3, 'system.alert_bots.edit', 181, 1),
@@ -94,7 +79,6 @@ INSERT INTO permission_menu (id, parent_id, name, route_path, component_path, me
 (29, 3, '岗位管理-删除', '', '', 3, 'organization.positions.delete', 32, 1),
 (30, 4, '用户列表-删除', '', '', 3, 'organization.users.delete', 42, 1),
 (31, 9, '角色权限-删除', '', '', 3, 'permission.roles.delete', 112, 1),
-(32, 10, '菜单权限-删除', '', '', 3, 'permission.menus.delete', 122, 1),
 (33, 14, 'IP黑名单-删除', '', '', 3, 'system.ip_blacklist.delete', 162, 1),
 (34, 17, '关怀提示-删除', '', '', 3, 'system.warm_tips.delete', 172, 1),
 (35, 18, '机器人配置-删除', '', '', 3, 'system.alert_bots.delete', 182, 1),
@@ -109,32 +93,46 @@ INSERT INTO permission_menu (id, parent_id, name, route_path, component_path, me
 (44, 9, '角色权限-分配菜单', '', '', 3, 'permission.roles.assign_menus', 114, 1),
 (45, 10, '菜单权限-维护定义', '', '', 3, 'permission.menus.manage_schema', 123, 1),
 (46, 3, '岗位管理-编辑资料', '', '', 3, 'organization.positions.edit_profile', 34, 1)
+)
+INSERT INTO permission_menu (
+  id,
+  parent_id,
+  name,
+  route_path,
+  component_path,
+  menu_type,
+  permission_key,
+  is_delegable,
+  sort,
+  status
+)
+SELECT
+  id,
+  parent_id,
+  name,
+  route_path,
+  component_path,
+  menu_type,
+  permission_key,
+  CASE
+    WHEN permission_key LIKE 'permission.%'
+      OR permission_key IN ('organization.positions.assign_roles', 'organization.users.reset_password', 'system.settings.edit', 'permission.menus.manage_schema')
+    THEN FALSE
+    ELSE TRUE
+  END,
+  sort,
+  status
+FROM permission_menu_seed
 ON CONFLICT (permission_key, deleted_at) DO UPDATE SET
   parent_id = EXCLUDED.parent_id,
   name = EXCLUDED.name,
   route_path = EXCLUDED.route_path,
   component_path = EXCLUDED.component_path,
   menu_type = EXCLUDED.menu_type,
-  permission_key = EXCLUDED.permission_key,
-  is_delegable = CASE
-    WHEN EXCLUDED.permission_key LIKE 'permission.%'
-      OR EXCLUDED.permission_key IN ('organization.positions.assign_roles', 'organization.users.reset_password', 'system.settings.edit', 'permission.menus.manage_schema')
-    THEN FALSE
-    ELSE TRUE
-  END,
+  is_delegable = EXCLUDED.is_delegable,
   sort = EXCLUDED.sort,
   status = EXCLUDED.status,
   updated_at = CURRENT_TIMESTAMP;
-UPDATE permission_menu
-SET is_delegable = FALSE,
-    updated_at = CURRENT_TIMESTAMP
-WHERE permission_key LIKE 'permission.%'
-   OR permission_key IN (
-     'organization.positions.assign_roles',
-     'organization.users.reset_password',
-     'system.settings.edit',
-     'permission.menus.manage_schema'
-   );
 SELECT setval(pg_get_serial_sequence('permission_menu', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM permission_menu), 1), true);
 
 INSERT INTO permission_role (id, role_name, role_code, role_type, is_protected) VALUES
@@ -146,14 +144,16 @@ INSERT INTO permission_role (id, role_name, role_code, role_type, is_protected) 
 (8, '只读观察员', 'readonly_observer', 1, TRUE),
 (9, '普通员工', 'employee', 2, FALSE)
 ON CONFLICT (id) DO UPDATE SET
+  role_name = EXCLUDED.role_name,
   role_code = EXCLUDED.role_code,
+  role_type = EXCLUDED.role_type,
   is_protected = EXCLUDED.is_protected,
   updated_at = CURRENT_TIMESTAMP;
 SELECT setval(pg_get_serial_sequence('permission_role', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM permission_role), 1), true);
 
 INSERT INTO permission_role_menu (role_id, menu_id) VALUES
-(1, 1),(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,15),(1,16),(1,8),(1,9),(1,10),(1,11),(1,12),(1,13),(1,14),(1,17),(1,18),(1,19),(1,20),(1,21),(1,22),(1,23),(1,24),(1,25),(1,26),(1,27),(1,28),(1,29),(1,30),(1,31),(1,32),(1,33),(1,34),(1,35),(1,36),(1,37),
-(2, 1),(2,2),(2,3),(2,4),(2,19),(2,20),(2,21),(2,28),(2,29),(2,30),
+(1, 1),(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,15),(1,16),(1,8),(1,9),(1,10),(1,11),(1,12),(1,13),(1,14),(1,17),(1,18),(1,19),(1,24),(1,25),(1,26),(1,27),(1,28),(1,29),(1,30),(1,31),(1,33),(1,34),(1,35),(1,36),(1,37),
+(2, 1),(2,2),(2,3),(2,4),(2,19),(2,28),(2,29),(2,30),
 (3, 8),(3,10),(3,11),(3,13),
 (4, 11),(4,12),(4,13),(4,14),(4,17),(4,18),(4,24),(4,25),(4,26),(4,27),(4,33),(4,34),(4,35),
 (7, 1),(7,2),(7,3),(7,4),
@@ -163,7 +163,3 @@ INSERT INTO permission_role_menu (role_id, menu_id) VALUES
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
 -- 普通员工（role_code=employee）默认不授予后台菜单权限，作为岗位分配的最低权限基线。
-
-INSERT INTO permission_role_user (role_id, uid) VALUES
-(1,10001),(2,10002),(2,10003),(3,10004)
-ON CONFLICT (role_id, uid) DO NOTHING;

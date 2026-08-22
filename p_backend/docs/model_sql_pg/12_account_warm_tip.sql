@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS account_warm_tip CASCADE;
 CREATE TABLE IF NOT EXISTS account_warm_tip (
   id BIGSERIAL PRIMARY KEY,
   tip_type VARCHAR(32) NOT NULL,
