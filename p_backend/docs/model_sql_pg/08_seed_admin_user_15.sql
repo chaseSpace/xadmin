@@ -6,7 +6,7 @@ INSERT INTO admin_user (
   uid, username, password_hash, display_name, avatar, email, phone, status, last_login_at, last_login_ip
 ) VALUES
   (21001, 'ceo_user_21001', '$2a$10$E7izPmKoa8FVP4fkae4QjOZ5SEs4Tg4LBf2FVbFb8GqTYZC0lEGim', '周锐', '', 'zhou.rui21001@example.com', '13800021001', 1, '2026-04-21 08:31:10', '10.22.1.11'),
-  (21002, 'hr_manager_21002', '$2a$10$E7izPmKoa8FVP4fkae4QjOZ5SEs4Tg4LBf2FVbFb8GqTYZC0lEGim', '林嘉', '', 'lin.jia21002@example.com', '13800021002', 0, '2026-04-20 19:22:47', '10.22.1.12'),
+  (21002, 'hr_manager_21002', '$2a$10$E7izPmKoa8FVP4fkae4QjOZ5SEs4Tg4LBf2FVbFb8GqTYZC0lEGim', '林嘉', '', 'lin.jia21002@example.com', '13800021002', 1, '2026-04-20 19:22:47', '10.22.1.12'),
   (21003, 'ops_specialist_21003', '$2a$10$E7izPmKoa8FVP4fkae4QjOZ5SEs4Tg4LBf2FVbFb8GqTYZC0lEGim', '谢宁', '', 'xie.ning21003@example.com', '13800021003', 1, '2026-04-20 10:05:23', '10.22.1.13'),
   (21004, 'auditor_21004', '$2a$10$E7izPmKoa8FVP4fkae4QjOZ5SEs4Tg4LBf2FVbFb8GqTYZC0lEGim', '高晨', '', 'gao.chen21004@example.com', '13800021004', 2, '2026-04-19 14:41:56', '10.22.1.14'),
   (21005, 'hr_manager_21005', '$2a$10$E7izPmKoa8FVP4fkae4QjOZ5SEs4Tg4LBf2FVbFb8GqTYZC0lEGim', '宋扬', '', 'song.yang21005@example.com', '13800021005', 1, '2026-04-19 09:16:03', '10.22.1.15'),
