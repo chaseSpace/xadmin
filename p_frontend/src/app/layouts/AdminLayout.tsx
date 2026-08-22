@@ -24,11 +24,13 @@ import {
 import {
   closestCenter,
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import {
   horizontalListSortingStrategy,
@@ -91,7 +93,10 @@ function SortableTabNode({ tabKey, children }: SortableTabNodeProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tabKey })
+  } = useSortable({
+    id: tabKey,
+    transition: { duration: 120, easing: 'ease-out' },
+  })
 
   return cloneElement(children, {
     ref: setNodeRef,
@@ -103,7 +108,7 @@ function SortableTabNode({ tabKey, children }: SortableTabNodeProps) {
     style: {
       ...children.props.style,
       transform: CSS.Translate.toString(transform),
-      transition,
+      transition: isDragging ? undefined : transition,
       zIndex: isDragging ? 2 : undefined,
     },
   })
@@ -383,7 +388,7 @@ export function AdminLayout() {
   const closeOtherTabs = usePageTabsStore((state) => state.closeOtherTabs)
   const resetTabs = usePageTabsStore((state) => state.resetTabs)
   const tabDragSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const [messageApi, contextHolder] = message.useMessage()
@@ -406,6 +411,7 @@ export function AdminLayout() {
   const [greetingHour, setGreetingHour] = useState(() => new Date().getHours())
   const [remainingTick, setRemainingTick] = useState(() => Date.now())
   const [warmTipAnimationKey, setWarmTipAnimationKey] = useState(0)
+  const [draggedTabKey, setDraggedTabKey] = useState<AppTabKey | null>(null)
   const themeSwitchApplyTimerRef = useRef<number | null>(null)
   const themeSwitchFxTimerRef = useRef<number | null>(null)
   const watchedAvatar = Form.useWatch('avatar', personalSettingsForm)
@@ -480,6 +486,10 @@ export function AdminLayout() {
       }),
     [allowedRouteSet, openedTabs],
   )
+  const draggedTab = useMemo(
+    () => visibleTabs.find((item) => item.key === draggedTabKey) ?? null,
+    [draggedTabKey, visibleTabs],
+  )
   const activeTabTitle = useMemo(() => t(resolveMenuTitle(selectedKey, menuTitleMap)), [menuTitleMap, selectedKey, t])
   const menuItems = useMemo<MenuProps['items']>(() => {
     if (!hasProfileMenuItems) {
@@ -535,7 +545,12 @@ export function AdminLayout() {
     }
   }
 
+  const handleTabDragStart = ({ active }: DragStartEvent) => {
+    setDraggedTabKey(String(active.id) as AppTabKey)
+  }
+
   const handleTabDragEnd = ({ active, over }: DragEndEvent) => {
+    setDraggedTabKey(null)
     if (!over || active.id === over.id) return
     const sourceKey = String(active.id) as AppTabKey
     const targetKey = String(over.id) as AppTabKey
@@ -964,7 +979,9 @@ export function AdminLayout() {
               <DndContext
                 sensors={tabDragSensors}
                 collisionDetection={closestCenter}
+                onDragStart={handleTabDragStart}
                 onDragEnd={handleTabDragEnd}
+                onDragCancel={() => setDraggedTabKey(null)}
               >
                 <SortableContext
                   items={visibleTabs.map((item) => item.key)}
@@ -978,6 +995,11 @@ export function AdminLayout() {
                     )}
                   </DefaultTabBar>
                 </SortableContext>
+                <DragOverlay dropAnimation={null}>
+                  {draggedTab ? (
+                    <div className="admin-panel-tab-drag-overlay">{t(draggedTab.title)}</div>
+                  ) : null}
+                </DragOverlay>
               </DndContext>
             )}
             items={visibleTabs.map((item) => ({

@@ -778,8 +778,8 @@ const enUsMessages: Record<string, string> = {
   '注销后账号不可登录，且会话将全部失效。':
     'After deactivation, the account cannot sign in and all sessions will expire.',
   '确认删除用户 {name}': 'Delete user {name}?',
-  '仅允许删除已注销满3个月用户。删除为软删除，不可恢复。':
-    'Only users deactivated for 3 months can be deleted. This is a soft delete and cannot be restored.',
+  '仅允许删除已注销满3个月用户。删除为软删除。':
+    'Only users deactivated for 3 months can be deleted. This is a soft delete.',
   '删除用户成功': 'User deleted',
   '当前用户暂无会话数据': 'This user has no session data',
   '不能选择已停用部门': 'Cannot select a disabled department',

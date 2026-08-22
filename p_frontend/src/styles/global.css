@@ -412,8 +412,21 @@ body {
 
 .admin-panel-tabs .ant-tabs-tab.is-dragging {
   cursor: grabbing;
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-brand) 22%, transparent);
-  opacity: 0.94;
+  opacity: 0.16;
+}
+
+.admin-panel-tab-drag-overlay {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--color-bg-panel);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-brand) 24%, transparent);
+  color: var(--color-text);
+  cursor: grabbing;
+  pointer-events: none;
 }
 
 .admin-panel-pages {

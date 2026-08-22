@@ -446,7 +446,7 @@ export function OrganizationMembersPage() {
     if (key === 'delete-user') {
       modalApi.confirm({
         title: t('确认删除用户 {name}', { name: row.displayName || row.username }),
-        content: t('仅允许删除已注销满3个月用户。删除为软删除，不可恢复。'),
+        content: t('仅允许删除已注销满3个月用户。删除为软删除。'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await deleteOrganizationUser(row.uid)
