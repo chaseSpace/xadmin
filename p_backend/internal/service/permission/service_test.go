@@ -1,6 +1,17 @@
 package permission
 
-import "testing"
+import (
+	"testing"
+
+	commpb "monorepo/proto/xadminpb/commpb"
+)
+
+func TestNormalizeRoleSortArgsDefaultsToIDAscending(t *testing.T) {
+	sort := normalizeRoleSortArgs(nil)
+	if len(sort) != 1 || sort[0].GetOrderField() != "r.id" || sort[0].GetOrderType() != commpb.OrderType_OT_Asc {
+		t.Fatalf("unexpected default role sort: %+v", sort)
+	}
+}
 
 func TestMenuIDsWithinScope(t *testing.T) {
 	tests := []struct {

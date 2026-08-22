@@ -96,6 +96,8 @@ func TestListRolesCountsPositionUsersDistinctly(t *testing.T) {
 		{ID: 1, RoleName: "组织管理员", RoleType: 2},
 		{ID: 2, RoleName: "审计员", RoleType: 2},
 	}
+	roles[0].CreatedAt = time.Now().Add(-time.Hour)
+	roles[1].CreatedAt = time.Now()
 	for _, role := range roles {
 		if err := db.WithContext(ctx).Table(role.TableName()).Create(&role).Error; err != nil {
 			t.Fatalf("create role failed: %v", err)
@@ -135,6 +137,9 @@ func TestListRolesCountsPositionUsersDistinctly(t *testing.T) {
 	}
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 rows, got=%d", len(rows))
+	}
+	if rows[0].ID != 1 || rows[1].ID != 2 {
+		t.Fatalf("expected roles ordered by id asc, got ids=%d,%d", rows[0].ID, rows[1].ID)
 	}
 
 	roleUsersCount := map[int64]int32{}

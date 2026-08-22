@@ -220,7 +220,7 @@ r.updated_at
 		Where("r.deleted_at = 0")
 	query = applyRoleFilters(query, filters)
 	if len(sort) == 0 {
-		query = query.Order("r.created_at desc")
+		query = query.Order("r.id asc")
 	}
 	total, err := db.Paginate(
 		query,

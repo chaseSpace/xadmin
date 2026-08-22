@@ -145,7 +145,8 @@ INSERT INTO permission_role (id, role_name, role_code, role_type, is_protected) 
 (5, '安全管理员', 'security_admin', 1, TRUE),
 (6, '业务运营管理员', 'business_ops_admin', 1, TRUE),
 (7, '部门主管', 'department_manager', 1, TRUE),
-(8, '只读观察员', 'readonly_observer', 1, TRUE)
+(8, '只读观察员', 'readonly_observer', 1, TRUE),
+(9, '普通员工', 'employee', 2, FALSE)
 ON CONFLICT (id) DO UPDATE SET
   role_code = EXCLUDED.role_code,
   is_protected = EXCLUDED.is_protected,
@@ -165,6 +166,8 @@ INSERT INTO permission_role_menu (role_id, menu_id) VALUES
 (2,39),(2,40),(2,41),(2,42),(2,46),
 (5,43)
 ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 普通员工（role_code=employee）默认不授予后台菜单权限，作为岗位分配的最低权限基线。
 
 INSERT INTO permission_role_user (role_id, uid) VALUES
 (1,10001),(2,10002),(2,10003),(3,10004)

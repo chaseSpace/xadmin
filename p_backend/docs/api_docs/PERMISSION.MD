@@ -70,11 +70,13 @@
 ## GET /v1/permission/roles
 - 描述：角色权限列表（分页、筛选、排序）。
 - 鉴权：是。
+- 默认排序：未传 `order_field/order_type` 时按 `id ASC`。
 - 说明：
   - 用户与角色的关联仅通过岗位继承生效。
   - `绑定用户数` 统计口径为当前通过岗位继承到该角色的有效用户数。
   - Response 返回稳定的 `role_code` 和 `is_protected`；安全判断不依赖可修改的 `role_name`。
   - Response 返回 `can_manage/can_assign_menus`，由后端按当前操作者计算；非超管列表会过滤受保护角色。
+  - 初始化种子包含非受保护的自定义角色“普通员工”（`role_code=employee`），默认不绑定后台菜单权限，作为岗位分配的最低权限基线。
 
 ## POST /v1/permission/roles
 - 描述：创建角色。

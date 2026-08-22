@@ -562,7 +562,7 @@ func normalizeMenuSortArgs(input []*commpb.SortArgs) []*commpb.SortArgs {
 
 func normalizeRoleSortArgs(input []*commpb.SortArgs) []*commpb.SortArgs {
 	if len(input) == 0 {
-		return nil
+		return []*commpb.SortArgs{{OrderField: "r.id", OrderType: commpb.OrderType_OT_Asc}}
 	}
 	fieldMap := map[string]string{"id": "r.id", "role_name": "r.role_name", "role_type": "r.role_type", "updated_at": "r.updated_at", "created_at": "r.created_at", "users": "users"}
 	out := make([]*commpb.SortArgs, 0, len(input))
