@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/csv"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,6 +23,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+var usernamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
 
 type Service interface {
 	GetDepartmentsTree(ctx context.Context) (*xadmin.OrganizationDepartmentsTreeResp, error)
@@ -517,6 +520,10 @@ func (s *service) ListUserSessions(ctx context.Context, req *xadmin.Organization
 }
 
 func (s *service) CreateUser(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreateUserReq) (*xadmin.OrganizationActionResp, error) {
+	username, err := normalizeUsername(req.GetUsername())
+	if err != nil {
+		return nil, err
+	}
 	if req.GetDepartmentId() > 0 {
 		if _, err := s.repo.GetDepartmentByID(ctx, req.GetDepartmentId()); err != nil {
 			return nil, err
@@ -550,7 +557,7 @@ func (s *service) CreateUser(ctx context.Context, operatorUID int32, req *xadmin
 	}
 	if err := s.repo.CreateUser(ctx, &model.AdminUser{
 		UID:          uid,
-		Username:     strings.TrimSpace(req.GetUsername()),
+		Username:     username,
 		PasswordHash: string(hash),
 		DisplayName:  strings.TrimSpace(req.GetDisplayName()),
 		Email:        strings.TrimSpace(req.GetEmail()),
@@ -562,6 +569,14 @@ func (s *service) CreateUser(ctx context.Context, operatorUID int32, req *xadmin
 		return nil, err
 	}
 	return &xadmin.OrganizationActionResp{Success: true, Action: "create_user"}, nil
+}
+
+func normalizeUsername(raw string) (string, error) {
+	username := strings.TrimSpace(raw)
+	if len(username) == 0 || len(username) > 64 || !usernamePattern.MatchString(username) {
+		return "", xerr.NewBiz(xerr.CodeParamError, "org.username_invalid")
+	}
+	return username, nil
 }
 
 func (s *service) UpdateUserProfile(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdateUserProfileReq) (*xadmin.OrganizationActionResp, error) {

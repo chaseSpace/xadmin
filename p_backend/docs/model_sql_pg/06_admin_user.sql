@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS admin_user CASCADE;
 CREATE TABLE IF NOT EXISTS admin_user (
   id BIGSERIAL PRIMARY KEY,
   uid INTEGER NOT NULL,
-  username VARCHAR(64) NOT NULL,
+  username VARCHAR(64) NOT NULL CHECK (username ~ '^[A-Za-z][A-Za-z0-9_-]*$'),
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(64) NOT NULL DEFAULT '',
   avatar VARCHAR(500) NOT NULL DEFAULT '',

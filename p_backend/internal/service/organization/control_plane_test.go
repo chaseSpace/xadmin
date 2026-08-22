@@ -62,7 +62,7 @@ func TestUserPrivilegeMutationsRejectUnsafeTargetsBeforeRepositoryAccess(t *test
 		},
 		"new account in protected position": func() error {
 			svc := &service{authorization: authorizationStub{assignPositionErr: errDeniedByPolicy}}
-			_, err := svc.CreateUser(ctx, 2, &xadmin.OrganizationCreateUserReq{PositionId: 9})
+			_, err := svc.CreateUser(ctx, 2, &xadmin.OrganizationCreateUserReq{Username: "new_user", PositionId: 9})
 			return err
 		},
 		"batch transfer containing unsafe target": func() error {

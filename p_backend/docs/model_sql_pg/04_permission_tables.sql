@@ -138,10 +138,10 @@ SELECT setval(pg_get_serial_sequence('permission_menu', 'id'), GREATEST((SELECT 
 INSERT INTO permission_role (id, role_name, role_code, role_type, is_protected) VALUES
 (1, '超级管理员', 'super_admin', 1, TRUE),
 (2, '组织管理员', 'organization_admin', 2, FALSE),
-(3, '审计员', 'auditor', 1, TRUE),
-(4, '系统运维管理员', 'system_ops_admin', 1, TRUE),
-(7, '部门主管', 'department_manager', 1, TRUE),
-(8, '只读观察员', 'readonly_observer', 1, TRUE),
+(3, '审计员', 'auditor', 1, FALSE),
+(4, '系统运维管理员', 'system_ops_admin', 1, FALSE),
+(7, '部门主管', 'department_manager', 1, FALSE),
+(8, '只读观察员', 'readonly_observer', 1, FALSE),
 (9, '普通员工', 'employee', 2, FALSE)
 ON CONFLICT (id) DO UPDATE SET
   role_name = EXCLUDED.role_name,

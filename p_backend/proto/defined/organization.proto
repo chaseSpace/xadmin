@@ -53,7 +53,7 @@ message OrganizationUsersResp {
 }
 
 message OrganizationCreateUserReq {
-  string username = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string username = 1 [(validate.rules).string = {min_len: 1, max_len: 64, pattern: "^[A-Za-z][A-Za-z0-9_-]*$"}];
   string password = 2 [(validate.rules).string = {min_len: 6, max_len: 128}];
   string display_name = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
   string email = 4 [(validate.rules).string = {max_len: 128}];
@@ -109,7 +109,7 @@ message OrganizationActionResp {
 }
 
 message OrganizationImportUserItem {
-  string username = 1 [(validate.rules).string = {min_len: 1, max_len: 64}];
+  string username = 1 [(validate.rules).string = {min_len: 1, max_len: 64, pattern: "^[A-Za-z][A-Za-z0-9_-]*$"}];
   string password = 2 [(validate.rules).string = {max_len: 128}];
   string display_name = 3 [(validate.rules).string = {min_len: 1, max_len: 64}];
   string email = 4 [(validate.rules).string = {max_len: 128}];
