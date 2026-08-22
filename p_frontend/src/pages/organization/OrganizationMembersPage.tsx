@@ -20,7 +20,7 @@ import {
 import type { MenuProps, TablePaginationConfig } from 'antd'
 import { useMemo, useState } from 'react'
 import type { SorterResult } from 'antd/es/table/interface'
-import { UiButton } from '../../components/ui'
+import { UiButton, UiProtectedBadge } from '../../components/ui'
 import { RoleSummary } from '../../components/permission/RoleSummary'
 import { forceLogout, type UserSessionItem } from '../../services/api/auth'
 import {
@@ -49,6 +49,16 @@ import { formatDateTime, toTimezoneDateTimeString } from '../../utils/timezone'
 import { hasPermission, permissionKeys } from '../../utils/permissions'
 
 type UserRow = OrganizationUser
+
+const USERNAME_DISPLAY_LIMIT = 15
+const USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/
+
+function truncateUsername(value: string) {
+  const characters = Array.from(value)
+  return characters.length > USERNAME_DISPLAY_LIMIT
+    ? `${characters.slice(0, USERNAME_DISPLAY_LIMIT).join('')}…`
+    : value
+}
 
 type UserFormValues = {
   username: string
@@ -193,7 +203,6 @@ export function OrganizationMembersPage() {
   const canChangeStatus = hasPermission(currentUser, permissionKeys.usersChangeStatus)
   const canResetPassword = hasPermission(currentUser, permissionKeys.usersResetPassword)
   const canDeleteUser = hasPermission(currentUser, permissionKeys.usersDelete)
-
   const usersQuery = useQuery({
     queryKey: [
       'organization-users',
@@ -661,6 +670,7 @@ export function OrganizationMembersPage() {
           if (cols.length < 6) continue
           const mappedStatus = statusMap[cols[5]]
           if (mappedStatus === undefined) continue
+          if (!USERNAME_PATTERN.test(cols[0])) continue
           rowsToImport.push({
             username: cols[0],
             password: cols[1] || 'Reset@123456',
@@ -965,8 +975,21 @@ export function OrganizationMembersPage() {
                 sorter: true,
                 render: (value: string, row) => (
                   <Space size={6}>
-                    <span>{value}</span>
-                    {row.isProtected ? <Tag color="red">{t('受保护')}</Tag> : null}
+                    <Tooltip title={t('点击复制文本')}>
+                      <Typography.Link
+                        onClick={() =>
+                          void copyText(value).then(() => messageApi.success(t('已复制')))
+                        }
+                      >
+                        {truncateUsername(value)}
+                      </Typography.Link>
+                    </Tooltip>
+                    {row.isProtected ? (
+                      <UiProtectedBadge
+                        ariaLabel={t('受保护')}
+                        tooltip={t('用户从岗位继承了受保护角色，仅超级管理员可执行敏感操作。')}
+                      />
+                    ) : null}
                   </Space>
                 ),
               },
@@ -976,16 +999,19 @@ export function OrganizationMembersPage() {
                 dataIndex: 'phone',
                 width: 150,
                 render: (value: string) => (
-                  <Space size={4}>
-                    <span>{maskPhone(value)}</span>
-                    {value ? (
-                      <CopyOutlined
+                  value ? (
+                    <Tooltip title={t('点击复制文本')}>
+                      <Typography.Link
                         onClick={() =>
                           void copyText(value).then(() => messageApi.success(t('已复制')))
                         }
-                      />
-                    ) : null}
-                  </Space>
+                      >
+                        {maskPhone(value)}
+                      </Typography.Link>
+                    </Tooltip>
+                  ) : (
+                    '-'
+                  )
                 ),
               },
               {
@@ -994,18 +1020,21 @@ export function OrganizationMembersPage() {
                 width: 180,
                 ellipsis: true,
                 render: (value: string) => (
-                  <Space size={4}>
-                    <Typography.Text ellipsis style={{ maxWidth: 138 }}>
-                      {maskEmail(value)}
-                    </Typography.Text>
-                    {value ? (
-                      <CopyOutlined
+                  value ? (
+                    <Tooltip title={t('点击复制文本')}>
+                      <Typography.Link
+                        ellipsis
+                        style={{ display: 'inline-block', maxWidth: 138 }}
                         onClick={() =>
                           void copyText(value).then(() => messageApi.success(t('已复制')))
                         }
-                      />
-                    ) : null}
-                  </Space>
+                      >
+                        {maskEmail(value)}
+                      </Typography.Link>
+                    </Tooltip>
+                  ) : (
+                    '-'
+                  )
                 ),
               },
               {
@@ -1194,9 +1223,15 @@ export function OrganizationMembersPage() {
           <Form.Item
             label={t('用户名')}
             name="username"
-            rules={[{ required: true, message: t('请输入用户名') }]}
+            rules={[
+              { required: true, message: t('请输入用户名') },
+              {
+                pattern: USERNAME_PATTERN,
+                message: t('用户名必须以字母开头，且只能包含字母、数字、下划线和减号'),
+              },
+            ]}
           >
-            <Input disabled={editorMode === 'edit'} />
+            <Input disabled={editorMode === 'edit'} maxLength={64} />
           </Form.Item>
           {editorMode === 'create' && (
             <Form.Item
@@ -1245,7 +1280,14 @@ export function OrganizationMembersPage() {
                 </Typography.Text>
               ) : null}
               <Form.Item
-                label={t('所属岗位')}
+                label={
+                  <Space size={6}>
+                    <span>{t('所属岗位')}</span>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {t('无权分配：岗位包含当前账号不可继续授予的权限')}
+                    </Typography.Text>
+                  </Space>
+                }
                 name="positionId"
                 rules={[{ required: true, message: t('请选择所属岗位') }]}
               >

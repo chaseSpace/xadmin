@@ -17,3 +17,9 @@ export { UiEmpty } from './UiEmpty'
 export type { UiEmptyProps } from './UiEmpty'
 
 export { UiErrorState } from './UiErrorState'
+
+export { UiAsteriskHint } from './UiAsteriskHint'
+export type { UiAsteriskHintProps } from './UiAsteriskHint'
+
+export { UiProtectedBadge } from './UiProtectedBadge'
+export type { UiProtectedBadgeProps } from './UiProtectedBadge'

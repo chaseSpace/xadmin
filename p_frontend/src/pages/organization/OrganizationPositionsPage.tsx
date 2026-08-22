@@ -14,12 +14,12 @@ import {
   Typography,
   message,
 } from 'antd'
-import { ExclamationCircleOutlined } from '@ant-design/icons'
+import { QuestionCircleOutlined } from '@ant-design/icons'
 import type { TablePaginationConfig } from 'antd'
 import type { SorterResult } from 'antd/es/table/interface'
 import type { MenuProps } from 'antd'
 import { useMemo, useState } from 'react'
-import { UiButton } from '../../components/ui'
+import { UiButton, UiProtectedBadge } from '../../components/ui'
 import { RoleSummary } from '../../components/permission/RoleSummary'
 import { useI18n } from '../../i18n/messages'
 import { useUiSettingsStore } from '../../store/uiSettings'
@@ -101,7 +101,6 @@ export function OrganizationPositionsPage() {
     currentUser?.isSuperAdmin === true &&
     hasPermission(currentUser, permissionKeys.positionsAssignRoles)
   const canDeletePosition = hasPermission(currentUser, permissionKeys.positionsDelete)
-
   const departmentsQuery = useQuery({
     queryKey: ['organization-departments-tree-for-positions'],
     queryFn: () => getOrganizationDepartmentsTree(),
@@ -465,7 +464,12 @@ export function OrganizationPositionsPage() {
                 render: (value: string, row) => (
                   <Space size={6}>
                     <span>{value}</span>
-                    {row.isProtected ? <Tag color="red">{t('受保护')}</Tag> : null}
+                    {row.isProtected ? (
+                      <UiProtectedBadge
+                        ariaLabel={t('受保护')}
+                        tooltip={t('岗位绑定受保护角色，仅超级管理员可管理。')}
+                      />
+                    ) : null}
                   </Space>
                 ),
               },
@@ -481,7 +485,7 @@ export function OrganizationPositionsPage() {
                   <Space size={4}>
                     {t('关联人数')}
                     <Tooltip title={t('当前岗位关联的全部未删除账号数量')}>
-                      <ExclamationCircleOutlined />
+                      <QuestionCircleOutlined />
                     </Tooltip>
                   </Space>
                 ),
@@ -492,7 +496,7 @@ export function OrganizationPositionsPage() {
                   <Space size={4}>
                     {t('在岗人数')}
                     <Tooltip title={t('当前岗位下启用状态账号数量')}>
-                      <ExclamationCircleOutlined />
+                      <QuestionCircleOutlined />
                     </Tooltip>
                   </Space>
                 ),

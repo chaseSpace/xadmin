@@ -501,6 +501,8 @@ const enUsMessages: Record<string, string> = {
   '请先选择部门': 'Select a department first',
   '该部门暂无可分配岗位': 'No assignable positions for this department',
   '无权分配': 'Not assignable',
+  '无权分配：岗位包含当前账号不可继续授予的权限':
+    'Not assignable: the position contains permissions the current account cannot delegate.',
   '确认{action}部门': '{action} department?',
   '{action}后将影响该部门在组织架构中的可见状态。':
     'After {action}, this department visibility in the organization structure will change.',
@@ -571,6 +573,19 @@ const enUsMessages: Record<string, string> = {
   '角色类型': 'Role Type',
   '普通管理员仅能查看非受保护角色；只有权限范围严格低于自己的自定义角色可以管理。':
     'Administrators can only view unprotected roles and manage custom roles with strictly fewer permissions.',
+  '仅超级管理员可编辑此页面，防止普通管理员越权扩展权限。':
+    'Only super administrators can edit this page, preventing administrators from expanding permissions beyond their authority.',
+  '是否允许普通管理员通过分配岗位等方式将该权限授予他人；关闭后仅超级管理员可配置。':
+    'Whether allows administrators to grant this permission through position assignment; when disabled, only super administrators can configure it.',
+  '岗位绑定受保护角色，仅超级管理员可管理。':
+    'This position has a protected role and can only be managed by super administrators.',
+  '用户从岗位继承了受保护角色，仅超级管理员可执行敏感操作。':
+    'This user inherits a protected role; only super administrators can perform sensitive actions.',
+  '受保护角色仅超级管理员可管理。':
+    'Protected roles can only be managed by super administrators.',
+  '用户名必须以字母开头，且只能包含字母、数字、下划线和减号':
+    'Username must start with a letter and contain only letters, numbers, underscores, and hyphens.',
+  '点击复制文本': 'Click to copy text',
   '查询': 'Search',
   '重置': 'Reset',
   '角色ID': 'Role ID',

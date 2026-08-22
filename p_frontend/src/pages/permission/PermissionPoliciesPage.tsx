@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { QuestionCircleOutlined } from '@ant-design/icons'
 import {
   Card,
   Form,
@@ -9,15 +10,17 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Tree,
   Typography,
   message,
+  theme,
 } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import type { TablePaginationConfig } from 'antd'
 import type { SorterResult } from 'antd/es/table/interface'
 import { useMemo, useState } from 'react'
-import { UiButton } from '../../components/ui'
+import { UiAsteriskHint, UiButton } from '../../components/ui'
 import { useI18n } from '../../i18n/messages'
 import { useUiSettingsStore } from '../../store/uiSettings'
 import { formatDateTime } from '../../utils/timezone'
@@ -87,15 +90,19 @@ function flattenTree(nodes: PermissionMenuTreeNode[]): Array<{ id: number; name:
 
 export function PermissionPoliciesPage() {
   const { t } = useI18n()
+  const { token } = theme.useToken()
   const systemTimezone = useUiSettingsStore((state) => state.systemTimezone)
   const [messageApi, contextHolder] = message.useMessage()
   const [modalApi, modalContextHolder] = Modal.useModal()
   const [filterForm] = Form.useForm<FilterFormValues>()
   const [menuForm] = Form.useForm<MenuFormValues>()
   const currentUser = useAuthStore((state) => state.currentUser)
+  const isSuperAdmin = currentUser?.isSuperAdmin === true
   const canManageSchema =
-    currentUser?.isSuperAdmin === true &&
-    hasPermission(currentUser, permissionKeys.menusManageSchema)
+    isSuperAdmin && hasPermission(currentUser, permissionKeys.menusManageSchema)
+  const delegableHint = t(
+    '是否允许普通管理员通过分配岗位等方式将该权限授予他人；关闭后仅超级管理员可配置。',
+  )
   const [queryTrigger, setQueryTrigger] = useState(0)
   const [filters, setFilters] = useState<PermissionMenusFilters>({ deleted: 'no' })
   const [pageNo, setPageNo] = useState(1)
@@ -318,6 +325,11 @@ export function PermissionPoliciesPage() {
               </Space>
             </Form.Item>
           </Form>
+          {!isSuperAdmin ? (
+            <UiAsteriskHint>
+              {t('仅超级管理员可编辑此页面，防止普通管理员越权扩展权限。')}
+            </UiAsteriskHint>
+          ) : null}
         </Card>
 
         <div className="permission-menu-grid table-scroll-region">
@@ -412,7 +424,16 @@ export function PermissionPoliciesPage() {
                   },
                   { title: t('权限标识'), dataIndex: 'permissionKey', width: 280, ellipsis: true },
                   {
-                    title: t('可委派'),
+                    title: (
+                      <Space size={4}>
+                        {t('可委派')}
+                        <Tooltip title={delegableHint}>
+                          <QuestionCircleOutlined
+                            style={{ color: token.colorTextSecondary, cursor: 'help' }}
+                          />
+                        </Tooltip>
+                      </Space>
+                    ),
                     dataIndex: 'isDelegable',
                     width: 100,
                     render: (value: boolean) => (
@@ -542,7 +563,20 @@ export function PermissionPoliciesPage() {
           >
             <InputNumber min={0} max={100000} precision={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item label={t('允许委派')} name="isDelegable" rules={[{ required: true }]}>
+          <Form.Item
+            label={
+              <Space size={4}>
+                {t('允许委派')}
+                <Tooltip title={delegableHint}>
+                  <QuestionCircleOutlined
+                    style={{ color: token.colorTextSecondary, cursor: 'help' }}
+                  />
+                </Tooltip>
+              </Space>
+            }
+            name="isDelegable"
+            rules={[{ required: true }]}
+          >
             <Select
               options={[
                 { value: true, label: t('是') },

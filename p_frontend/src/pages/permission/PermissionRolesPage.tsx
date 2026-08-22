@@ -12,9 +12,7 @@ import {
   Tag,
   Tooltip,
   Tree,
-  Typography,
   message,
-  theme,
 } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import type { TablePaginationConfig } from 'antd'
@@ -22,9 +20,8 @@ import type { MenuProps } from 'antd'
 import type { SorterResult } from 'antd/es/table/interface'
 import { useState } from 'react'
 import type { Key } from 'react'
-import { UiButton } from '../../components/ui'
+import { UiAsteriskHint, UiButton, UiProtectedBadge } from '../../components/ui'
 import { useI18n } from '../../i18n/messages'
-import { useThemeStore } from '../../store/theme'
 import { useUiSettingsStore } from '../../store/uiSettings'
 import { formatDateTime } from '../../utils/timezone'
 import { useAuthStore } from '../../store/auth'
@@ -66,8 +63,6 @@ function mapTree(nodes: PermissionMenuTreeNode[]): DataNode[] {
 
 export function PermissionRolesPage() {
   const { t } = useI18n()
-  const { token } = theme.useToken()
-  const themeMode = useThemeStore((state) => state.mode)
   const systemTimezone = useUiSettingsStore((state) => state.systemTimezone)
   const [messageApi, contextHolder] = message.useMessage()
   const [modalApi, modalContextHolder] = Modal.useModal()
@@ -97,11 +92,6 @@ export function PermissionRolesPage() {
   const canDeleteRoles = hasPermission(currentUser, permissionKeys.rolesDelete)
   const isRootAdminRole = (role?: PermissionRole | null) =>
     Boolean(role) && role?.roleCode === 'super_admin'
-  const roleVisibilityHintColor =
-    themeMode === 'light'
-      ? `color-mix(in srgb, ${token.colorWarningActive} 55%, ${token.colorErrorActive} 45%)`
-      : token.colorWarningText
-
   const rolesQuery = useQuery({
     queryKey: ['permission-roles', pageNo, pageSize, orderField, orderType, filters, queryTrigger],
     queryFn: () => getPermissionRoles(pageNo, pageSize, orderField, orderType, filters),
@@ -305,15 +295,9 @@ export function PermissionRolesPage() {
             </Form.Item>
           </Form>
           {!isSuperAdmin ? (
-            <Typography.Text
-              style={{
-                color: roleVisibilityHintColor,
-                display: 'block',
-                marginTop: 8,
-              }}
-            >
-              * {t('普通管理员仅能查看非受保护角色；只有权限范围严格低于自己的自定义角色可以管理。')}
-            </Typography.Text>
+            <UiAsteriskHint>
+              {t('普通管理员仅能查看非受保护角色；只有权限范围严格低于自己的自定义角色可以管理。')}
+            </UiAsteriskHint>
           ) : null}
         </Card>
 
@@ -374,7 +358,12 @@ export function PermissionRolesPage() {
                 render: (value: string, row) => (
                   <Space size={6}>
                     <span>{value}</span>
-                    {row.isProtected ? <Tag color="red">{t('受保护')}</Tag> : null}
+                    {row.isProtected ? (
+                      <UiProtectedBadge
+                        ariaLabel={t('受保护')}
+                        tooltip={t('受保护角色仅超级管理员可管理。')}
+                      />
+                    ) : null}
                   </Space>
                 ),
               },
