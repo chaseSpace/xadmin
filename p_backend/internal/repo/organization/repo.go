@@ -41,6 +41,7 @@ type UserRow struct {
 	DepartmentName     string     `gorm:"column:department_name"`
 	PositionID         int64      `gorm:"column:position_id"`
 	PositionName       string     `gorm:"column:position_name"`
+	ManagementRank     int32      `gorm:"column:management_rank"`
 	RoleNamesCSV       string     `gorm:"column:role_names_csv"`
 	PermissionKeysCSV  string     `gorm:"column:permission_keys_csv"`
 	Protected          bool       `gorm:"column:is_protected"`
@@ -74,6 +75,7 @@ type PositionRow struct {
 	DepartmentID      int64      `gorm:"column:department_id"`
 	DepartmentName    string     `gorm:"column:department_name"`
 	Level             string     `gorm:"column:level"`
+	ManagementRank    int32      `gorm:"column:management_rank"`
 	Hc                int32      `gorm:"column:hc"`
 	Staffed           int32      `gorm:"column:staffed"`
 	RelatedCount      int32      `gorm:"column:related_count"`
@@ -196,6 +198,7 @@ u.uid,
   COALESCE(d.name, '') AS department_name,
   u.position_id,
   COALESCE(p.name, '') AS position_name,
+  COALESCE(p.management_rank, 0) AS management_rank,
   COALESCE(pr.role_names_csv, '') AS role_names_csv,
 	COALESCE(ps.permission_keys_csv, '') AS permission_keys_csv,
 	COALESCE(ps.is_protected, FALSE) AS is_protected,
@@ -461,6 +464,7 @@ p.code,
 p.department_id,
 COALESCE(d.name, '') as department_name,
 p.level,
+p.management_rank,
 COUNT(DISTINCT u.id) AS hc,
 COUNT(DISTINCT CASE WHEN u.status = ? THEN u.id END) AS staffed,
 COUNT(DISTINCT u.id) AS related_count,
@@ -485,7 +489,7 @@ LEFT JOIN (
 `).
 		Joins(positionPermissionScopeJoinSQL, consts.PermissionStatusEnabled).
 		Where("p.deleted_at = 0").
-		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv, ps.permission_keys_csv, ps.is_protected")
+		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.management_rank, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv, ps.permission_keys_csv, ps.is_protected")
 	query = applyPositionFilters(query, filters)
 	if len(sort) == 0 {
 		// Avoid ambiguous `created_at` when joined tables contain same column.
@@ -517,6 +521,7 @@ p.code,
 p.department_id,
 COALESCE(d.name, '') as department_name,
 p.level,
+p.management_rank,
 COUNT(DISTINCT u.id) AS hc,
 COUNT(DISTINCT CASE WHEN u.status = ? THEN u.id END) AS staffed,
 COUNT(DISTINCT u.id) AS related_count,
@@ -541,7 +546,7 @@ LEFT JOIN (
 `).
 		Joins(positionPermissionScopeJoinSQL, consts.PermissionStatusEnabled).
 		Where("p.id = ? AND p.deleted_at = 0", id).
-		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv, ps.permission_keys_csv, ps.is_protected").
+		Group("p.id, p.name, p.code, p.department_id, d.name, p.level, p.management_rank, p.status, p.updated_at, pr.role_ids_csv, pr.role_names_csv, ps.permission_keys_csv, ps.is_protected").
 		First(&row).Error
 	if err != nil {
 		return nil, xerr.WrapDBNotFound(err, "organization position not found")

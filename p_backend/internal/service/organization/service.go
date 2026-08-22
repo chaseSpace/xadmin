@@ -270,6 +270,11 @@ func (s *service) GetPosition(ctx context.Context, operatorUID int32, req *xadmi
 }
 
 func (s *service) CreatePosition(ctx context.Context, operatorUID int32, req *xadmin.OrganizationCreatePositionReq) (*xadmin.OrganizationActionResp, error) {
+	if req.GetManagementRank() != 0 {
+		if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+			return nil, err
+		}
+	}
 	if _, err := s.repo.GetDepartmentByID(ctx, req.GetDepartmentId()); err != nil {
 		return nil, err
 	}
@@ -277,13 +282,14 @@ func (s *service) CreatePosition(ctx context.Context, operatorUID int32, req *xa
 		return nil, xerr.NewBiz(xerr.CodeBadRequest, "auth.dedicated_endpoint_required")
 	}
 	position := &model.OrganizationPosition{
-		Name:         strings.TrimSpace(req.GetName()),
-		Code:         strings.TrimSpace(req.GetCode()),
-		DepartmentID: req.GetDepartmentId(),
-		Level:        strings.TrimSpace(req.GetLevel()),
-		Hc:           req.GetHc(),
-		Staffed:      req.GetStaffed(),
-		Status:       consts.PositionStatusEnabled,
+		Name:           strings.TrimSpace(req.GetName()),
+		Code:           strings.TrimSpace(req.GetCode()),
+		DepartmentID:   req.GetDepartmentId(),
+		Level:          strings.TrimSpace(req.GetLevel()),
+		ManagementRank: req.GetManagementRank(),
+		Hc:             req.GetHc(),
+		Staffed:        req.GetStaffed(),
+		Status:         consts.PositionStatusEnabled,
 	}
 	if err := s.repo.CreatePosition(ctx, position); err != nil {
 		return nil, err
@@ -321,6 +327,9 @@ func (s *service) UpdatePosition(ctx context.Context, operatorUID int32, req *xa
 
 func (s *service) UpdatePositionRoles(ctx context.Context, operatorUID int32, req *xadmin.OrganizationUpdatePositionRolesReq) (*xadmin.OrganizationActionResp, error) {
 	if err := s.authorization.EnsureSuperAdmin(ctx, operatorUID); err != nil {
+		return nil, err
+	}
+	if err := s.authorization.EnsureCanManagePosition(ctx, operatorUID, req.GetId()); err != nil {
 		return nil, err
 	}
 	if _, err := s.repo.GetPositionByID(ctx, req.GetId()); err != nil {
@@ -416,7 +425,7 @@ func (s *service) ListUsers(ctx context.Context, operatorUID int32, req *xadmin.
 			PositionName:       row.PositionName,
 			RoleNames:          parseCSVString(row.RoleNamesCSV),
 			IsProtected:        row.Protected,
-			CanManage:          authorizationsvc.CanManageUserFromScope(scope, row.UID, row.Protected, parseCSVString(row.PermissionKeysCSV)),
+			CanManage:          authorizationsvc.CanManageUserFromScope(scope, row.UID, row.Protected, row.ManagementRank),
 		}
 		if row.LastLoginAt != nil {
 			item.LastLoginAt = timefmt.RFC3339Ptr(row.LastLoginAt)
@@ -458,6 +467,7 @@ func mapPositionRow(row *organizationrepo.PositionRow, scope *authorizationsvc.O
 		DepartmentId:   row.DepartmentID,
 		DepartmentName: row.DepartmentName,
 		Level:          row.Level,
+		ManagementRank: row.ManagementRank,
 		Hc:             row.Hc,
 		Staffed:        row.Staffed,
 		RelatedCount:   row.RelatedCount,
@@ -465,9 +475,9 @@ func mapPositionRow(row *organizationrepo.PositionRow, scope *authorizationsvc.O
 		RoleIds:        parseCSVInt64(row.RoleIDsCSV),
 		RoleNames:      parseCSVString(row.RoleNamesCSV),
 		IsProtected:    row.Protected,
-		CanManage:      authorizationsvc.CanManagePositionFromScope(scope, row.ID, row.Protected, permissionKeys),
-		CanAssign:      authorizationsvc.CanAssignPositionFromScope(scope, row.ID, row.Protected, permissionKeys),
-		CanAssignRoles: scope != nil && scope.SuperAdmin,
+		CanManage:      authorizationsvc.CanManagePositionFromScope(scope, row.ID, row.Protected, row.ManagementRank),
+		CanAssign:      authorizationsvc.CanAssignPositionFromScope(scope, row.ID, row.Protected, row.ManagementRank, permissionKeys),
+		CanAssignRoles: scope != nil && scope.SuperAdmin && scope.PositionID != row.ID,
 	}
 	if row.UpdatedAt != nil {
 		item.UpdatedAt = timefmt.RFC3339Ptr(row.UpdatedAt)

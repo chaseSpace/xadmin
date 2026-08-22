@@ -138,6 +138,17 @@ func (h *Handler) CreatePosition(c *fiber.Ctx) error {
 		return xfiber.StdResponse(c, nil, err)
 	}
 	resp, err := h.svc.CreatePosition(c.UserContext(), middleware.GetUID(c), req)
+	if err == nil {
+		_ = auditlog.Log(c.UserContext(), auditlog.Meta{
+			UID:       middleware.GetUID(c),
+			Action:    "create_position",
+			Result:    "success",
+			TraceID:   strings.TrimSpace(c.Get("X-Trace-ID")),
+			SourceIP:  c.IP(),
+			UserAgent: c.Get("User-Agent"),
+			Detail:    "code=" + strings.TrimSpace(req.GetCode()) + " management_rank=" + strconv.FormatInt(int64(req.GetManagementRank()), 10),
+		})
+	}
 	return xfiber.StdResponse(c, resp, err)
 }
 

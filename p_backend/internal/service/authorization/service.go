@@ -12,7 +12,8 @@ type Repository interface {
 	UserHasProtectedRole(ctx context.Context, uid int32) (bool, error)
 	RoleIsProtected(ctx context.Context, roleID int64) (bool, error)
 	PositionHasProtectedRole(ctx context.Context, positionID int64) (bool, error)
-	GetUserPositionID(ctx context.Context, uid int32) (int64, error)
+	GetUserPositionInfo(ctx context.Context, uid int32) (int64, int32, error)
+	GetPositionManagementRank(ctx context.Context, positionID int64) (int32, error)
 	ListEffectivePermissionKeysByUID(ctx context.Context, uid int32, delegableOnly bool) ([]string, error)
 	ListEffectivePermissionKeysByPositionID(ctx context.Context, positionID int64) ([]string, error)
 	ListEffectivePermissionKeysByRoleID(ctx context.Context, roleID int64) ([]string, error)
@@ -25,6 +26,7 @@ type Service struct {
 type OperatorScope struct {
 	UID                  int32
 	PositionID           int64
+	ManagementRank       int32
 	SuperAdmin           bool
 	Permissions          []string
 	DelegablePermissions []string
@@ -54,7 +56,7 @@ func (s *Service) GetOperatorScope(ctx context.Context, uid int32) (*OperatorSco
 	if err != nil {
 		return nil, err
 	}
-	positionID, err := s.repo.GetUserPositionID(ctx, uid)
+	positionID, managementRank, err := s.repo.GetUserPositionInfo(ctx, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -69,40 +71,44 @@ func (s *Service) GetOperatorScope(ctx context.Context, uid int32) (*OperatorSco
 	return &OperatorScope{
 		UID:                  uid,
 		PositionID:           positionID,
+		ManagementRank:       managementRank,
 		SuperAdmin:           superAdmin,
 		Permissions:          permissions,
 		DelegablePermissions: delegablePermissions,
 	}, nil
 }
 
-func CanManageUserFromScope(scope *OperatorScope, targetUID int32, protected bool, targetPermissions []string) bool {
+func CanManageUserFromScope(scope *OperatorScope, targetUID int32, protected bool, targetManagementRank int32) bool {
 	if scope == nil || scope.UID <= 0 || targetUID <= 0 || scope.UID == targetUID {
 		return false
 	}
 	if scope.SuperAdmin {
 		return true
 	}
-	return !protected && isStrictSubset(targetPermissions, scope.Permissions)
+	return !protected && scope.ManagementRank > targetManagementRank
 }
 
-func CanManagePositionFromScope(scope *OperatorScope, positionID int64, protected bool, positionPermissions []string) bool {
+func CanManagePositionFromScope(scope *OperatorScope, positionID int64, protected bool, targetManagementRank int32) bool {
+	if scope == nil || scope.UID <= 0 || positionID <= 0 {
+		return false
+	}
+	if scope.PositionID == positionID {
+		return false
+	}
+	if scope.SuperAdmin {
+		return true
+	}
+	return !protected && scope.ManagementRank > targetManagementRank
+}
+
+func CanAssignPositionFromScope(scope *OperatorScope, positionID int64, protected bool, targetManagementRank int32, positionPermissions []string) bool {
 	if scope == nil || scope.UID <= 0 || positionID <= 0 {
 		return false
 	}
 	if scope.SuperAdmin {
 		return true
 	}
-	return !protected && scope.PositionID != positionID && isStrictSubset(positionPermissions, scope.Permissions)
-}
-
-func CanAssignPositionFromScope(scope *OperatorScope, positionID int64, protected bool, positionPermissions []string) bool {
-	if scope == nil || scope.UID <= 0 || positionID <= 0 {
-		return false
-	}
-	if scope.SuperAdmin {
-		return true
-	}
-	return !protected && isSubset(positionPermissions, scope.DelegablePermissions)
+	return !protected && scope.ManagementRank > targetManagementRank && isSubset(positionPermissions, scope.DelegablePermissions)
 }
 
 func CanManageRoleFromScope(scope *OperatorScope, protected bool, rolePermissions []string) bool {
@@ -145,16 +151,16 @@ func (s *Service) EnsureCanManageUser(ctx context.Context, operatorUID, targetUI
 	if protected {
 		return xerr.NewBiz(xerr.CodeForbidden, "auth.protected_target")
 	}
-	operatorPermissions, err := s.repo.ListEffectivePermissionKeysByUID(ctx, operatorUID, false)
+	_, operatorManagementRank, err := s.repo.GetUserPositionInfo(ctx, operatorUID)
 	if err != nil {
 		return err
 	}
-	targetPermissions, err := s.repo.ListEffectivePermissionKeysByUID(ctx, targetUID, false)
+	_, targetManagementRank, err := s.repo.GetUserPositionInfo(ctx, targetUID)
 	if err != nil {
 		return err
 	}
-	if !isStrictSubset(targetPermissions, operatorPermissions) {
-		return xerr.NewBiz(xerr.CodeForbidden, "auth.target_scope_exceeded")
+	if operatorManagementRank <= targetManagementRank {
+		return xerr.NewBiz(xerr.CodeForbidden, "auth.target_management_rank_exceeded")
 	}
 	return nil
 }
@@ -175,6 +181,17 @@ func (s *Service) EnsureCanAssignPosition(ctx context.Context, operatorUID int32
 	if protected {
 		return xerr.NewBiz(xerr.CodeForbidden, "auth.protected_target")
 	}
+	_, operatorManagementRank, err := s.repo.GetUserPositionInfo(ctx, operatorUID)
+	if err != nil {
+		return err
+	}
+	targetManagementRank, err := s.repo.GetPositionManagementRank(ctx, positionID)
+	if err != nil {
+		return err
+	}
+	if operatorManagementRank <= targetManagementRank {
+		return xerr.NewBiz(xerr.CodeForbidden, "auth.target_management_rank_exceeded")
+	}
 	delegablePermissions, err := s.repo.ListEffectivePermissionKeysByUID(ctx, operatorUID, true)
 	if err != nil {
 		return err
@@ -193,17 +210,17 @@ func (s *Service) EnsureCanManagePosition(ctx context.Context, operatorUID int32
 	if operatorUID <= 0 {
 		return xerr.NewBiz(xerr.CodeUnauthorized, "auth.not_logged_in")
 	}
-	if super, err := s.repo.IsSuperAdmin(ctx, operatorUID); err != nil {
-		return err
-	} else if super {
-		return nil
-	}
-	operatorPositionID, err := s.repo.GetUserPositionID(ctx, operatorUID)
+	operatorPositionID, operatorManagementRank, err := s.repo.GetUserPositionInfo(ctx, operatorUID)
 	if err != nil {
 		return err
 	}
 	if operatorPositionID == positionID {
 		return xerr.NewBiz(xerr.CodeForbidden, "auth.self_privilege_change_forbidden")
+	}
+	if super, err := s.repo.IsSuperAdmin(ctx, operatorUID); err != nil {
+		return err
+	} else if super {
+		return nil
 	}
 	protected, err := s.repo.PositionHasProtectedRole(ctx, positionID)
 	if err != nil {
@@ -212,16 +229,12 @@ func (s *Service) EnsureCanManagePosition(ctx context.Context, operatorUID int32
 	if protected {
 		return xerr.NewBiz(xerr.CodeForbidden, "auth.protected_target")
 	}
-	operatorPermissions, err := s.repo.ListEffectivePermissionKeysByUID(ctx, operatorUID, false)
+	targetManagementRank, err := s.repo.GetPositionManagementRank(ctx, positionID)
 	if err != nil {
 		return err
 	}
-	positionPermissions, err := s.repo.ListEffectivePermissionKeysByPositionID(ctx, positionID)
-	if err != nil {
-		return err
-	}
-	if !isStrictSubset(positionPermissions, operatorPermissions) {
-		return xerr.NewBiz(xerr.CodeForbidden, "auth.target_scope_exceeded")
+	if operatorManagementRank <= targetManagementRank {
+		return xerr.NewBiz(xerr.CodeForbidden, "auth.target_management_rank_exceeded")
 	}
 	return nil
 }

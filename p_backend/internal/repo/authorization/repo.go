@@ -102,19 +102,39 @@ func (r *Repo) RoleIDsContainProtected(ctx context.Context, roleIDs []int64) (bo
 	return count > 0, nil
 }
 
-func (r *Repo) GetUserPositionID(ctx context.Context, uid int32) (int64, error) {
+func (r *Repo) GetUserPositionInfo(ctx context.Context, uid int32) (int64, int32, error) {
 	if uid <= 0 {
+		return 0, 0, nil
+	}
+	var row struct {
+		PositionID     int64 `gorm:"column:position_id"`
+		ManagementRank int32 `gorm:"column:management_rank"`
+	}
+	err := r.db.WithContext(ctx).
+		Table("admin_user u").
+		Select("u.position_id, COALESCE(p.management_rank, 0) AS management_rank").
+		Joins("LEFT JOIN organization_position p ON p.id = u.position_id AND p.deleted_at = 0").
+		Where("u.uid = ? AND u.deleted_at = 0", uid).
+		Scan(&row).Error
+	if err != nil {
+		return 0, 0, xerr.WrapDBE(err, "get user position info")
+	}
+	return row.PositionID, row.ManagementRank, nil
+}
+
+func (r *Repo) GetPositionManagementRank(ctx context.Context, positionID int64) (int32, error) {
+	if positionID <= 0 {
 		return 0, nil
 	}
-	var positionID int64
+	var managementRank int32
 	err := r.db.WithContext(ctx).
-		Table("admin_user").
-		Where("uid = ? AND deleted_at = 0", uid).
-		Pluck("position_id", &positionID).Error
+		Table("organization_position").
+		Where("id = ? AND deleted_at = 0", positionID).
+		Pluck("management_rank", &managementRank).Error
 	if err != nil {
-		return 0, xerr.WrapDBE(err, "get user position")
+		return 0, xerr.WrapDBE(err, "get position management rank")
 	}
-	return positionID, nil
+	return managementRank, nil
 }
 
 func (r *Repo) ListEffectivePermissionKeysByUID(ctx context.Context, uid int32, delegableOnly bool) ([]string, error) {

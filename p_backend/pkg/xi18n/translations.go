@@ -11,6 +11,7 @@ func init() {
 	Register("auth.self_privilege_change_forbidden", "不允许修改自己的岗位、角色或账号状态", "You cannot change your own position, roles, or account status")
 	Register("auth.protected_target", "不允许操作受保护角色或账号", "Protected roles or accounts cannot be managed")
 	Register("auth.target_scope_exceeded", "目标权限范围不低于当前账号，不允许操作", "The target permission scope is not lower than the current account")
+	Register("auth.target_management_rank_exceeded", "目标管理层级不低于当前账号，不允许操作", "The target management rank is not lower than the current account")
 	Register("auth.grant_scope_exceeded", "目标包含当前账号不可委派的权限", "The target contains permissions that the current account cannot delegate")
 	Register("auth.dedicated_endpoint_required", "权限归属字段必须通过专用接口修改", "Permission assignment fields must be changed through the dedicated endpoint")
 	Register("auth.ip_blocked", "当前IP已被限制访问", "Your IP has been blocked")

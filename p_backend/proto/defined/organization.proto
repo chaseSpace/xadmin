@@ -215,6 +215,7 @@ message OrganizationPositionItem {
   bool can_manage = 15;
   bool can_assign = 16;
   bool can_assign_roles = 17;
+  int32 management_rank = 18 [(validate.rules).int32 = {gte: 0, lte: 1000}];
 }
 
 message OrganizationBatchTransferUsersReq {
@@ -241,6 +242,7 @@ message OrganizationCreatePositionReq {
   int32 hc = 5 [(validate.rules).int32 = {gte: 0, lte: 100000}];
   int32 staffed = 6 [(validate.rules).int32 = {gte: 0, lte: 100000}];
   repeated int64 role_ids = 7 [(validate.rules).repeated = {max_items: 100, items: {int64: {gt: 0}}}];
+  int32 management_rank = 8 [(validate.rules).int32 = {gte: 0, lte: 1000}];
 }
 
 message OrganizationUpdatePositionReq {
