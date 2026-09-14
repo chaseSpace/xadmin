@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
-import { Alert, Card, Input, Space, Typography, message } from 'antd'
+import { Alert, Card, Checkbox, Input, Space, Typography, message } from 'antd'
 import { Controller, useForm } from 'react-hook-form'
 import { useRef, useState } from 'react'
 import { useAuthStore } from '../store/auth'
@@ -10,7 +10,14 @@ import { useLoginMutation } from '../services/api/auth'
 import { normalizeApiError } from '../services/api/error'
 import { loginRoute } from '../app/router'
 import { loginRequestSchema, type LoginRequestInput } from '../services/schemas/auth'
-import { WaveBackground } from './login/WaveBackground'
+import { LoginTextPressureBackground } from './login/LoginTextPressureBackground'
+import {
+  clearRememberedLoginCredentials,
+  getRememberedLoginCredentials,
+  saveRememberedLoginCredentials,
+} from './login/rememberedCredentials'
+
+const isDemoMode = import.meta.env.VITE_DEMO === 'true'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -21,6 +28,8 @@ export function LoginPage() {
   const [messageApi, contextHolder] = message.useMessage()
   const submittingRef = useRef(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [rememberedCredentials] = useState(() => getRememberedLoginCredentials())
+  const [rememberPassword, setRememberPassword] = useState(Boolean(rememberedCredentials))
 
   const {
     control,
@@ -29,8 +38,8 @@ export function LoginPage() {
   } = useForm<LoginRequestInput>({
     resolver: zodResolver(loginRequestSchema),
     defaultValues: {
-      username: 'admin',
-      password: '123456',
+      username: rememberedCredentials?.username ?? '',
+      password: rememberedCredentials?.password ?? '',
     },
   })
 
@@ -58,6 +67,13 @@ export function LoginPage() {
           menuLoadError: '',
         },
       })
+
+      if (rememberPassword) {
+        saveRememberedLoginCredentials(values)
+      } else {
+        clearRememberedLoginCredentials()
+      }
+
       await messageApi.success(t('登录成功'))
 
       if (search.redirect) {
@@ -74,9 +90,16 @@ export function LoginPage() {
     }
   }
 
+  const handleRememberPasswordChange = (nextRememberPassword: boolean) => {
+    setRememberPassword(nextRememberPassword)
+    if (!nextRememberPassword) {
+      clearRememberedLoginCredentials()
+    }
+  }
+
   return (
     <div className="login-page">
-      <WaveBackground />
+      <LoginTextPressureBackground />
       {contextHolder}
       <Card className="login-card" variant="borderless">
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -84,10 +107,15 @@ export function LoginPage() {
             <Typography.Title level={3} style={{ margin: 0 }}>
               {t('XAdmin 登录')}
             </Typography.Title>
-            <Typography.Text type="secondary">
-              {t('使用默认演示账号可直接进入后台框架。')}
-            </Typography.Text>
-            <Alert message={t('演示账号：admin / 123456')} type="info" showIcon />
+            <Typography.Text type="secondary">{t('请输入您的账户名和密码')}</Typography.Text>
+            {isDemoMode ? (
+              <Typography.Text type="secondary">
+                {t('使用默认演示账号可直接进入后台框架。')}
+              </Typography.Text>
+            ) : null}
+            {isDemoMode ? (
+              <Alert message={t('演示账号：admin / 123456')} type="info" showIcon />
+            ) : null}
             {search.reason === 'expired' ? (
               <Alert message={t('登录已过期，请重新登录')} type="warning" showIcon />
             ) : null}
@@ -123,6 +151,13 @@ export function LoginPage() {
             {errors.password ? (
               <Typography.Text type="danger">{errors.password.message}</Typography.Text>
             ) : null}
+
+            <Checkbox
+              checked={rememberPassword}
+              onChange={(event) => handleRememberPasswordChange(event.target.checked)}
+            >
+              {t('记住密码')}
+            </Checkbox>
 
             <UiButton
               type="primary"

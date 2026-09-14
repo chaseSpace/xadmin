@@ -37,7 +37,45 @@ body {
   padding: var(--space-3);
   position: relative;
   overflow: hidden;
-  background: var(--color-bg);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(62, 96, 255, 0.28), transparent 42%),
+    radial-gradient(circle at 10% 18%, rgba(73, 203, 255, 0.17), transparent 30%),
+    radial-gradient(circle at 90% 80%, rgba(147, 84, 255, 0.22), transparent 34%), #050817;
+}
+
+.login-text-pressure {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.login-text-pressure::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(4, 7, 28, 0.03) 0 24%, rgba(4, 7, 28, 0.38) 100%),
+    linear-gradient(118deg, rgba(2, 4, 20, 0.52), transparent 48%, rgba(2, 4, 20, 0.54));
+}
+
+.login-text-pressure__word {
+  width: min(94vw, 1680px);
+  height: min(42vw, 620px);
+  min-height: 210px;
+  opacity: 0.84;
+  filter: drop-shadow(0 0 28px rgba(91, 126, 255, 0.25));
+}
+
+@media (max-width: 640px) {
+  .login-text-pressure__word {
+    width: calc(100vw - 28px);
+    height: min(58vw, 360px);
+    min-height: 160px;
+    opacity: 0.7;
+  }
 }
 
 .full-width {
@@ -48,9 +86,120 @@ body {
   width: 100%;
   max-width: 440px;
   border-radius: var(--radius-lg);
-  box-shadow: 0 18px 38px rgba(8, 39, 94, 0.15);
   position: relative;
   z-index: 1;
+  justify-self: end;
+  margin-right: clamp(var(--space-3), 8vw, 168px);
+  overflow: hidden;
+  color: #eef4ff;
+  background:
+    linear-gradient(135deg, rgba(40, 66, 143, 0.48), rgba(8, 15, 43, 0.94) 42%),
+    #060b1f;
+  border: 1px solid rgba(135, 164, 255, 0.42);
+  box-shadow:
+    0 26px 72px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(213, 226, 255, 0.18),
+    0 0 42px rgba(89, 116, 255, 0.16);
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(104, 211, 255, 0.92),
+    rgba(151, 111, 255, 0.9)
+  );
+  pointer-events: none;
+}
+
+.login-card .ant-typography {
+  color: #f4f7ff;
+}
+
+.login-card .ant-typography-secondary {
+  color: rgba(215, 226, 255, 0.7) !important;
+}
+
+.login-card .ant-alert {
+  border-color: rgba(99, 175, 255, 0.5);
+  background: rgba(43, 104, 214, 0.2);
+}
+
+.login-card .ant-alert-warning {
+  border-color: rgba(255, 193, 92, 0.48);
+  background: rgba(157, 105, 20, 0.2);
+}
+
+.login-card .ant-alert-message,
+.login-card .ant-alert-description {
+  color: #e7efff;
+}
+
+.login-card .ant-input,
+.login-card .ant-input-affix-wrapper {
+  color: #f4f7ff;
+  background: rgba(3, 8, 28, 0.48);
+  border-color: rgba(132, 161, 255, 0.34);
+  box-shadow: inset 0 1px 0 rgba(180, 202, 255, 0.06);
+}
+
+.login-card .ant-input-affix-wrapper .ant-input {
+  background: transparent;
+}
+
+.login-card .ant-input::placeholder {
+  color: rgba(202, 216, 255, 0.48);
+}
+
+.login-card .ant-input-affix-wrapper:hover,
+.login-card .ant-input:hover,
+.login-card .ant-input-affix-wrapper-focused,
+.login-card .ant-input:focus {
+  border-color: #78b4ff;
+  box-shadow:
+    0 0 0 2px rgba(83, 137, 255, 0.18),
+    inset 0 1px 0 rgba(180, 202, 255, 0.08);
+}
+
+.login-card .ant-input-password-icon {
+  color: rgba(203, 219, 255, 0.72);
+}
+
+.login-card .ant-checkbox-wrapper {
+  color: rgba(224, 234, 255, 0.8);
+}
+
+.login-card .ant-checkbox .ant-checkbox-inner {
+  background: rgba(3, 8, 28, 0.58);
+  border-color: rgba(132, 161, 255, 0.48);
+}
+
+.login-card .ant-checkbox-checked .ant-checkbox-inner {
+  background: #5d74f5;
+  border-color: #7baeff;
+}
+
+.login-card .ant-btn-primary {
+  border: 0;
+  background: linear-gradient(100deg, #3578ff, #735cf5);
+  box-shadow: 0 10px 22px rgba(52, 95, 236, 0.36);
+}
+
+.login-card .ant-btn-primary:hover,
+.login-card .ant-btn-primary:focus-visible {
+  background: linear-gradient(100deg, #4b8dff, #876dfb) !important;
+  box-shadow: 0 12px 28px rgba(83, 114, 255, 0.52);
+}
+
+@media (max-width: 768px) {
+  .login-card {
+    justify-self: center;
+    margin-right: 0;
+  }
 }
 
 .admin-shell {
